@@ -108,3 +108,33 @@ class Upscaler:
             target = (round(image.width * outscale), round(image.height * outscale))
             result = result.resize(target, Image.Resampling.LANCZOS)
         return result
+
+
+class UpscaleStep:
+    """Pipeline step wrapping :class:`Upscaler`.
+
+    On CPU the lightweight ``general`` model (native x4, resized to the requested
+    factor) keeps latency reasonable; on GPU the dedicated x2/x4 models are used
+    (CLAUDE.md §3b device defaults).
+    """
+
+    name = "upscale"
+
+    def __init__(
+        self,
+        factor: int = 2,
+        device: str = "auto",
+        models_dir: Path = Path("/data/models"),
+        base_url: str | None = None,
+        tile: int = 400,
+    ) -> None:
+        self.factor = factor
+        dev = resolve_device(device)
+        if dev.type == "cpu":
+            model: UpscaleModel = "general"
+        else:
+            model = "x2plus" if factor == 2 else "x4plus"
+        self._upscaler = Upscaler(model, device, models_dir, base_url, tile=tile)
+
+    def process(self, image: Image.Image) -> Image.Image:
+        return self._upscaler.upscale(image, outscale=self.factor)

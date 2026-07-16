@@ -17,7 +17,7 @@ from loguru import logger
 from PIL import Image
 
 from .archs.deoldify_unet import Backbone, build_deoldify_generator, load_state_dict_file
-from .device import resolve_device
+from .device import device_defaults, resolve_device
 from .download import ensure_weights
 from .model_registry import get_entry
 
@@ -106,6 +106,27 @@ class DeOldifyColorizer(Colorizer):
             out = model(x)  # type: ignore[operator]
         rendered = self._to_pil(out)
         return recombine_chroma(orig, rendered)
+
+
+class ColorizeStep:
+    """Pipeline step wrapping :class:`DeOldifyColorizer` (CLAUDE.md §4)."""
+
+    name = "colorize"
+
+    def __init__(
+        self,
+        model: ColorizerModel = "artistic",
+        render_factor: int | None = None,
+        device: str = "auto",
+        models_dir: Path = Path("/data/models"),
+        base_url: str | None = None,
+    ) -> None:
+        self._colorizer = DeOldifyColorizer(model, device, models_dir, base_url)
+        self._render_factor = render_factor
+
+    def process(self, image: Image.Image) -> Image.Image:
+        rf = self._render_factor or device_defaults(self._colorizer.device).render_factor
+        return self._colorizer.colorize(image, render_factor=rf)
 
 
 def _to_float_chw(rgb: Image.Image):  # type: ignore[no-untyped-def]
