@@ -1,8 +1,25 @@
-# Rechroma configuration (core slice).
-# Precedence: CLI flags > env vars (RECHROMA_*) > this file > built-in defaults.
+# Rechroma configuration.
+# Precedence: CLI flags > env vars (RECHROMA_* / TELEGRAM_BOT_TOKEN) > this file > defaults.
+# Every value below is optional; shown with its default.
 
-device: auto            # auto | cuda | cpu
-models_dir: /data/models
-model_base_url:         # optional self-hosted mirror; files fetched as ${model_base_url}/<filename>
-render_factor:          # blank = device default (GPU 35, CPU 25)
-log_level: info
+# --- Core / device ---
+device: auto                 # auto | cuda | cpu
+models_dir: /data/models     # where weights are downloaded + verified
+model_base_url:              # optional self-hosted mirror: files fetched as ${model_base_url}/<filename>
+render_factor:               # blank = device default (GPU 35, CPU 25); range 7-45
+log_level: info              # debug | info | warning | error
+
+# --- Web / API ---
+port: 8000
+data_dir: /data/jobs         # SQLite DB + uploaded/result images
+web_auth_token:              # optional shared bearer token; blank = OPEN (warned) — put behind a proxy
+max_upload_mb: 25
+workers: 1                   # concurrent pipeline workers (models are memory-heavy)
+retention_hours: 24          # delete originals + results after this many hours; 0 = immediately
+rate_limit_per_hour: 10      # per client/chat; 0 disables
+
+# --- Telegram bot (token via env TELEGRAM_BOT_TOKEN only; blank disables the bot) ---
+telegram_bot_token:
+telegram_webhook_url:        # set to run in webhook mode instead of long-polling
+allowed_chat_ids: []         # allowlist; EMPTY = only admins may use the bot (never open)
+admin_chat_ids: []           # always allowed; can use the bot even with an empty allowlist
