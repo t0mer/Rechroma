@@ -42,8 +42,10 @@ export function JobCard({ job }: { job: TrackedJob }) {
   const [resultError, setResultError] = useState<string | null>(null);
 
   // Once the result exists, pull it as an object URL (works with the API token).
+  // Note: `resultUrl` must NOT be in the deps — setting it would re-run this
+  // effect, and the previous cleanup would revoke the URL we just displayed.
   useEffect(() => {
-    if (job.status !== "done" || !job.hasResult || resultUrl) return;
+    if (job.status !== "done" || !job.hasResult) return;
     let revoked = false;
     let created: string | null = null;
     fetchResultObjectUrl(job.jobId)
@@ -60,7 +62,7 @@ export function JobCard({ job }: { job: TrackedJob }) {
       revoked = true;
       if (created) URL.revokeObjectURL(created);
     };
-  }, [job.status, job.hasResult, job.jobId, resultUrl]);
+  }, [job.status, job.hasResult, job.jobId]);
 
   const active = job.status === "queued" || job.status === "running";
 
