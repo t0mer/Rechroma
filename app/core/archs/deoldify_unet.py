@@ -14,6 +14,7 @@ from typing import Literal, cast
 import torch
 from torch import nn
 
+from .checkpoint import load_checkpoint
 from .layers import (
     MergeLayer,
     PixelShuffleICNR,
@@ -154,13 +155,9 @@ def build_deoldify_generator(backbone: Backbone) -> DeOldifyGenerator:
 
 
 def load_state_dict_file(path: Path) -> dict[str, torch.Tensor]:
-    """Safely load a weights file (``weights_only=True``) and unwrap ``{'model': ...}``.
+    """Safely load a DeOldify weights file and unwrap ``{'model': ...}``.
 
-    DeOldify checkpoints need only Python's builtin ``slice`` allow-listed; nothing
-    else is unpickled, so arbitrary-code execution is not possible (CLAUDE.md §10).
+    Thin wrapper over the shared :func:`load_checkpoint` (kept for callers that
+    import it from this module).
     """
-    with torch.serialization.safe_globals([slice]):
-        obj = torch.load(path, map_location="cpu", weights_only=True)
-    if isinstance(obj, dict) and "model" in obj and isinstance(obj["model"], dict):
-        return obj["model"]
-    return obj
+    return load_checkpoint(path)
