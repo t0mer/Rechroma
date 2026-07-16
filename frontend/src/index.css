@@ -1,0 +1,117 @@
+@import "@fontsource-variable/bricolage-grotesque";
+@import "@fontsource-variable/inter";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Warm "paper" light theme — the aged photograph, before restoration. */
+    --background: 40 33% 97%;
+    --foreground: 24 14% 12%;
+    --card: 40 40% 99%;
+    --card-foreground: 24 14% 12%;
+    --muted: 38 24% 92%;
+    --muted-foreground: 28 8% 42%;
+    --border: 34 22% 87%;
+    --input: 34 22% 84%;
+    /* Amber — the warmth returning to a photo. */
+    --primary: 22 82% 50%;
+    --primary-foreground: 40 40% 99%;
+    /* Teal split-tone accent, borrowed from darkroom colour toning. */
+    --accent: 187 52% 33%;
+    --accent-foreground: 40 40% 99%;
+    --destructive: 5 74% 48%;
+    --destructive-foreground: 40 40% 99%;
+    --success: 152 46% 36%;
+    --success-foreground: 40 40% 99%;
+    --ring: 22 82% 50%;
+    --shadow: 24 30% 20%;
+    --radius: 0.9rem;
+  }
+
+  .dark {
+    /* Darkroom near-black, faintly warm. */
+    --background: 24 16% 8%;
+    --foreground: 38 22% 91%;
+    --card: 24 14% 11%;
+    --card-foreground: 38 22% 91%;
+    --muted: 24 12% 17%;
+    --muted-foreground: 34 12% 62%;
+    --border: 26 12% 20%;
+    --input: 26 12% 24%;
+    --primary: 26 88% 56%;
+    --primary-foreground: 24 30% 8%;
+    --accent: 184 46% 46%;
+    --accent-foreground: 24 30% 8%;
+    --destructive: 6 68% 56%;
+    --destructive-foreground: 24 30% 8%;
+    --success: 152 42% 48%;
+    --success-foreground: 24 30% 8%;
+    --ring: 26 88% 56%;
+    --shadow: 0 0% 0%;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  html {
+    overflow-x: hidden;
+  }
+
+  body {
+    margin: 0;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: theme("fontFamily.sans");
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background-color: hsl(var(--primary) / 0.25);
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: theme("fontFamily.display");
+    letter-spacing: -0.02em;
+  }
+
+  .grain {
+    background-image: radial-gradient(
+      hsl(var(--foreground) / 0.04) 1px,
+      transparent 1px
+    );
+    background-size: 4px 4px;
+  }
+
+  /* Skeleton shimmer for in-flight jobs. */
+  .shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsl(var(--foreground) / 0.06),
+      transparent
+    );
+    animation: shimmer 1.6s infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

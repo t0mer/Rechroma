@@ -29,6 +29,11 @@ htmlcov/
 dist/
 build/
 
+# Embedded frontend build dir: keep the placeholder tracked, ignore built assets.
+!/app/webui/dist/
+/app/webui/dist/*
+!/app/webui/dist/.gitkeep
+
 # Data / models / local runtime
 /data/
 *.db

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rechroma — Bring old photos back to life</title>
+    <meta
+      name="description"
+      content="Rechroma restores and colorizes old black & white photographs."
+    />
+    <script>
+      // Apply the persisted / system theme before first paint to avoid a flash.
+      (function () {
+        try {
+          var stored = localStorage.getItem("rechroma-theme");
+          var dark =
+            stored === "dark" ||
+            (!stored &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          if (dark) document.documentElement.classList.add("dark");
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
