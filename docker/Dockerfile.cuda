@@ -1,0 +1,44 @@
+# Rechroma CUDA image (linux/amd64 only).
+# Same layout as the CPU image but on an NVIDIA CUDA runtime base with GPU torch.
+
+# ---- Stage 1: frontend ----
+FROM --platform=$BUILDPLATFORM node:20-alpine AS frontend
+WORKDIR /build/frontend
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN mkdir -p /build/app/webui/dist && npm run build
+
+# ---- Stage 2: CUDA runtime ----
+FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04 AS runtime
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    DEBIAN_FRONTEND=noninteractive
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      python3.12 python3-pip libgl1 libglib2.0-0 curl \
+    && ln -sf /usr/bin/python3.12 /usr/bin/python \
+    && rm -rf /var/lib/apt/lists/*
+
+# Default PyPI torch wheels are CUDA-enabled (cu12x) — exactly what we want here.
+RUN python -m pip install --no-cache-dir --break-system-packages torch torchvision
+
+COPY pyproject.toml VERSION README.md ./
+COPY app/ ./app/
+RUN python -m pip install --no-cache-dir --break-system-packages .
+
+COPY --from=frontend /build/app/webui/dist ./app/webui/dist
+
+RUN mkdir -p /data/models /data/jobs \
+    && useradd --create-home --uid 10001 appuser \
+    && chown -R appuser:appuser /app /data
+USER appuser
+
+EXPOSE 8000
+VOLUME ["/data/models", "/data/jobs"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD curl -fsS http://127.0.0.1:8000/healthz || exit 1
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

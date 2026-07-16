@@ -1,0 +1,23 @@
+services:
+  rechroma:
+    image: techblog/rechroma:latest
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.cpu
+    ports:
+      - "8000:8000"
+    volumes:
+      # Named volumes inherit the image's non-root ownership (see docker-releases guidance).
+      - rechroma-models:/data/models   # downloaded weights (persist to avoid re-downloading)
+      - rechroma-jobs:/data/jobs        # SQLite DB + transient input/result images
+    environment:
+      LOG_LEVEL: info
+      RECHROMA_DEVICE: auto
+      # RECHROMA_WEB_AUTH_TOKEN: change-me      # protect the UI/API
+      # TELEGRAM_BOT_TOKEN: 123:abc             # enable the Telegram bot
+      # RECHROMA_ALLOWED_CHAT_IDS: "111,222"    # telegram allowlist
+    restart: unless-stopped
+
+volumes:
+  rechroma-models:
+  rechroma-jobs:

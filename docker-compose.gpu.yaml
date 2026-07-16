@@ -1,0 +1,26 @@
+services:
+  rechroma:
+    image: techblog/rechroma:latest-cuda
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.cuda
+    ports:
+      - "8000:8000"
+    volumes:
+      - rechroma-models:/data/models
+      - rechroma-jobs:/data/jobs
+    environment:
+      LOG_LEVEL: info
+      RECHROMA_DEVICE: auto
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  rechroma-models:
+  rechroma-jobs:
