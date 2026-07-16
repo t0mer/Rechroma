@@ -23,7 +23,7 @@ def verify_token(
     provided = x_api_token
     if provided is None and authorization and authorization.lower().startswith("bearer "):
         provided = authorization[7:]
-    if provided is None or not hmac.compare_digest(provided, expected):
+    if provided is None or not hmac.compare_digest(provided.encode(), expected.encode()):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="missing or invalid API token",
