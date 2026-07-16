@@ -71,8 +71,7 @@ def ensure_weights(
         got = sha256_file(part)
         if entry.sha256 and got != entry.sha256:
             raise RuntimeError(
-                f"checksum mismatch for {entry.filename}: "
-                f"expected {entry.sha256}, got {got}"
+                f"checksum mismatch for {entry.filename}: expected {entry.sha256}, got {got}"
             )
         part.replace(final)
     finally:
