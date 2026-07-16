@@ -1,0 +1,8 @@
+# Rechroma configuration (core slice).
+# Precedence: CLI flags > env vars (RECHROMA_*) > this file > built-in defaults.
+
+device: auto            # auto | cuda | cpu
+models_dir: /data/models
+model_base_url:         # optional self-hosted mirror; files fetched as ${model_base_url}/<filename>
+render_factor:          # blank = device default (GPU 35, CPU 25)
+log_level: info
