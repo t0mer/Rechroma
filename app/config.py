@@ -23,6 +23,15 @@ class Settings(BaseSettings):
     render_factor: int | None = None
     log_level: str = "info"
 
+    # Web / API
+    port: int = 8000
+    data_dir: Path = Path("/data/jobs")  # SQLite DB + uploaded/result images
+    web_auth_token: str | None = None  # optional shared bearer token; unset = open (warned)
+    max_upload_mb: int = 25
+    workers: int = 1
+    retention_hours: float = 24.0  # delete originals + results after this; 0 = immediately
+    rate_limit_per_hour: int = 10  # per source; 0 disables
+
 
 def load_settings(config_path: Path | None = None, **overrides: Any) -> Settings:
     """Build ``Settings`` layering CLI overrides > env vars > YAML file > defaults.

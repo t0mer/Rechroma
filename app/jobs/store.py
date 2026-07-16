@@ -136,6 +136,12 @@ class JobStore:
             )
             return cur.rowcount
 
+    def status_counts(self) -> dict[str, int]:
+        """Number of jobs per status (for healthz / metrics)."""
+        with self._conn() as conn:
+            rows = conn.execute("SELECT status, COUNT(*) FROM jobs GROUP BY status").fetchall()
+        return {row[0]: int(row[1]) for row in rows}
+
     def count_recent_for_source(self, source_ref: str, since: float) -> int:
         """Number of jobs for ``source_ref`` created at or after ``since`` (rate limiting)."""
         with self._conn() as conn:
