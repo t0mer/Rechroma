@@ -4,8 +4,9 @@ version = "0.0.0"
 description = "Photo colorization & restoration service"
 requires-python = ">=3.12"
 dependencies = [
-    "torch>=2.2",
-    "torchvision>=0.17",
+    # torch>=2.5 required for torch.serialization.safe_globals (safe weight loading).
+    "torch>=2.5",
+    "torchvision>=0.20",
     "pillow>=10.2",
     "numpy>=1.26",
     "pydantic>=2.6",
