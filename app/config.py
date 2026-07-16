@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ENV_PREFIX = "RECHROMA_"
@@ -31,6 +32,20 @@ class Settings(BaseSettings):
     workers: int = 1
     retention_hours: float = 24.0  # delete originals + results after this; 0 = immediately
     rate_limit_per_hour: int = 10  # per source; 0 disables
+
+    # Telegram (token via env only; empty token disables the bot)
+    telegram_bot_token: str | None = None
+    telegram_webhook_url: str | None = None  # set to use webhook mode instead of polling
+    allowed_chat_ids: list[int] = []  # allowlist; empty = only admins may use the bot
+    admin_chat_ids: list[int] = []
+
+    @field_validator("allowed_chat_ids", "admin_chat_ids", mode="before")
+    @classmethod
+    def _split_ids(cls, v: Any) -> Any:
+        """Accept a comma-separated string (env-friendly) or a real list."""
+        if isinstance(v, str):
+            return [int(part) for part in v.replace(",", " ").split()]
+        return v
 
 
 def load_settings(config_path: Path | None = None, **overrides: Any) -> Settings:

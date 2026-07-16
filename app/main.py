@@ -57,12 +57,21 @@ def create_app(settings: Settings | None = None, processor: Processor | None = N
         await service.start()
         stop = False
         retention = asyncio.create_task(run_retention_loop(service, 3600, lambda: stop))
+        bot_task: asyncio.Task[None] | None = None
+        if settings.telegram_bot_token:
+            from .telegram.bot import run_bot
+
+            bot_task = asyncio.create_task(run_bot(settings, service))
         try:
             yield
         finally:
             stop = True
             retention.cancel()
+            if bot_task is not None:
+                bot_task.cancel()
             await asyncio.gather(retention, return_exceptions=True)
+            if bot_task is not None:
+                await asyncio.gather(bot_task, return_exceptions=True)
             await service.stop()
 
     app = FastAPI(
