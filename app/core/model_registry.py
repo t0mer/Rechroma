@@ -36,7 +36,7 @@ REGISTRY: dict[str, ModelEntry] = {
     "deoldify-stable": ModelEntry(
         filename="ColorizeStable_gen.pth",
         sha256="ca9cd7f43fb8b222c9a70f7b292e305a000694b0ff9d2ae4a6747b1a2e1ee5af",
-        size_bytes=874 * MB,
+        size_bytes=874066230,
         url="https://huggingface.co/spensercai/DeOldify/resolve/main/ColorizeStable_gen.pth",
         license="MIT",
         role="DeOldify stable colorizer (portraits/landscapes)",

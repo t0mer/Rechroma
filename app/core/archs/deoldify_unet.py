@@ -20,6 +20,7 @@ from .layers import (
     ResBlock,
     SigmoidRange,
     UnetBlock,
+    UnetBlockWide,
     custom_conv_layer,
 )
 from .resnet import resnet34, resnet101
@@ -45,10 +46,12 @@ class _Config:
     deep_channels: int  # encoder output channels (layer4)
     blocks: tuple[_DecoderBlock, ...]
     final_nf: int  # channels entering the final pixel-shuffle
+    wide: bool  # True -> UnetBlockWide (single conv); False -> UnetBlock (two convs)
     y_range: tuple[float, float]
 
 
-# Artistic = resnet34 "deep" unet. Verified against ColorizeArtistic_gen.pth.
+# Configs verified against the released weights (key-for-key state_dict match).
+# resnet34 = artistic "deep"; resnet101 = stable "wide".
 _CONFIG: dict[Backbone, _Config] = {
     "resnet34": _Config(
         deep_channels=512,
@@ -59,6 +62,19 @@ _CONFIG: dict[Backbone, _Config] = {
             _DecoderBlock(up_in=672, skip=64, nf=300, self_attention=False),
         ),
         final_nf=300,
+        wide=False,
+        y_range=(-3.0, 3.0),
+    ),
+    "resnet101": _Config(
+        deep_channels=2048,
+        blocks=(
+            _DecoderBlock(up_in=2048, skip=1024, nf=512, self_attention=False),
+            _DecoderBlock(up_in=512, skip=512, nf=512, self_attention=True),
+            _DecoderBlock(up_in=512, skip=256, nf=512, self_attention=False),
+            _DecoderBlock(up_in=512, skip=64, nf=256, self_attention=False),
+        ),
+        final_nf=256,
+        wide=True,
         y_range=(-3.0, 3.0),
     ),
 }
@@ -80,7 +96,8 @@ class DeOldifyGenerator(nn.Module):
         enc = _encoder(backbone)
         ni = cfg.deep_channels
 
-        decoder = [UnetBlock(b.up_in, b.skip, b.nf, b.self_attention) for b in cfg.blocks]
+        block_cls = UnetBlockWide if cfg.wide else UnetBlock
+        decoder = [block_cls(b.up_in, b.skip, b.nf, b.self_attention) for b in cfg.blocks]
 
         # Top-level module list; indices mirror the released ``layers.<N>`` keys.
         self.layers = nn.ModuleList(

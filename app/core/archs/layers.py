@@ -162,3 +162,30 @@ class UnetBlock(nn.Module):
             up_out = nn.functional.interpolate(up_out, size=skip.shape[-2:], mode="nearest")
         cat = self.relu(torch.cat([up_out, self.bn(skip)], dim=1))
         return self.conv2(self.conv1(cat))
+
+
+class UnetBlockWide(nn.Module):
+    """Decoder stage for the "wide" DeOldify unet (stable): a single fused conv.
+
+    Unlike :class:`UnetBlock` (two convs), the wide block pixel-shuffles the deep
+    feature to ``n_out`` channels and applies one ``conv`` over the concatenation
+    with the encoder skip. ``conv`` gains a ``SelfAttention`` child (``.3``) when
+    ``self_attention``. Matches the released ``ColorizeStable_gen.pth`` keys.
+    """
+
+    def __init__(self, up_in_c: int, x_in_c: int, n_out: int, self_attention: bool = False) -> None:
+        super().__init__()
+        self.shuf = PixelShuffleICNR(up_in_c, n_out, scale=2, norm="spectral")
+        self.bn = nn.BatchNorm2d(x_in_c)
+        ni = n_out + x_in_c
+        self.conv = custom_conv_layer(
+            ni, n_out, ks=3, norm="spectral", self_attention=self_attention
+        )
+        self.relu = nn.ReLU(inplace=True)
+
+    def forward(self, up_in: torch.Tensor, skip: torch.Tensor) -> torch.Tensor:
+        up_out = self.shuf(up_in)
+        if up_out.shape[-2:] != skip.shape[-2:]:
+            up_out = nn.functional.interpolate(up_out, size=skip.shape[-2:], mode="nearest")
+        cat = self.relu(torch.cat([up_out, self.bn(skip)], dim=1))
+        return self.conv(cat)
