@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { Film, ImagePlus, UploadCloud, X } from "lucide-react";
-import { cn, formatBytes } from "@/lib/utils";
+import { cn, formatBytes, isVideoFile, mediaNoun } from "@/lib/utils";
 
 export interface PendingFile {
   id: string;
@@ -23,14 +23,9 @@ const ACCEPTED_MIME = new Set([
   "video/x-msvideo",
 ]);
 const ACCEPTED_EXT = /\.(jpe?g|png|webp|tiff?|bmp|mp4|mov|webm|mkv|avi)$/i;
-const VIDEO_EXT = /\.(mp4|mov|webm|mkv|avi)$/i;
 
 function isAccepted(file: File): boolean {
   return ACCEPTED_MIME.has(file.type) || ACCEPTED_EXT.test(file.name);
-}
-
-function isVideo(file: File): boolean {
-  return file.type.startsWith("video/") || VIDEO_EXT.test(file.name);
 }
 
 interface UploadPanelProps {
@@ -127,7 +122,7 @@ export function UploadPanel({
               key={f.id}
               className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-muted"
             >
-              {isVideo(f.file) ? (
+              {isVideoFile(f.file) ? (
                 <div className="grid h-full w-full place-items-center bg-muted">
                   <Film className="h-6 w-6 text-muted-foreground" />
                 </div>
@@ -167,7 +162,7 @@ export function UploadPanel({
 
       {files.length > 0 && (
         <p className="text-xs text-muted-foreground">
-          {files.length} photo{files.length > 1 ? "s" : ""} ready ·{" "}
+          {files.length} {mediaNoun(files.map((f) => f.file), files.length)} ready ·{" "}
           {formatBytes(files.reduce((n, f) => n + f.file.size, 0))}
         </p>
       )}

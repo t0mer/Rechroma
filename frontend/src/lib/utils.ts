@@ -6,6 +6,24 @@ export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));
 }
 
+const VIDEO_EXT = /\.(mp4|mov|webm|mkv|avi)$/i;
+
+/** Whether a file is a video (by MIME type or extension). */
+export function isVideoFile(file: File): boolean {
+  return file.type.startsWith("video/") || VIDEO_EXT.test(file.name);
+}
+
+/**
+ * Pick the noun for a batch of files: "video(s)" if all are videos, "photo(s)"
+ * if all are photos, "file(s)" for a mix. `count` selects singular/plural.
+ */
+export function mediaNoun(files: File[], count: number): string {
+  const plural = count !== 1;
+  if (files.length > 0 && files.every(isVideoFile)) return plural ? "videos" : "video";
+  if (files.length > 0 && files.every((f) => !isVideoFile(f))) return plural ? "photos" : "photo";
+  return plural ? "files" : "file";
+}
+
 /** Human-readable byte size, e.g. 1.4 MB. */
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

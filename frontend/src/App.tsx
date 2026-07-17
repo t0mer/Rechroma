@@ -10,6 +10,7 @@ import { useToast } from "@/components/Toaster";
 import { useTheme } from "@/hooks/useTheme";
 import { useJobPolling } from "@/hooks/useJobPolling";
 import { createJob, getHealth, type Health, type Job, type JobOptions } from "@/lib/api";
+import { mediaNoun } from "@/lib/utils";
 import type { TrackedJob } from "@/types";
 
 let counter = 0;
@@ -115,20 +116,21 @@ export default function App() {
     setPending([]);
     setSubmitting(false);
 
+    const submittedFiles = files.map((pf) => pf.file);
     if (failures > 0) {
       const reason =
         results.find((r) => r.status === "rejected") &&
         (results.find((r) => r.status === "rejected") as PromiseRejectedResult)
           .reason;
       toast.error(
-        `${failures} photo${failures > 1 ? "s" : ""} couldn't be submitted${
+        `${failures} ${mediaNoun(submittedFiles, failures)} couldn't be submitted${
           reason?.message ? `: ${reason.message}` : "."
         }`,
       );
     }
     if (newJobs.length > 0) {
       toast.success(
-        `${newJobs.length} photo${newJobs.length > 1 ? "s" : ""} sent for restoration.`,
+        `${newJobs.length} ${mediaNoun(submittedFiles, newJobs.length)} sent for restoration.`,
       );
     }
   }, [options, submitting, toast]);
@@ -243,7 +245,10 @@ export default function App() {
               {submitting
                 ? "Sending…"
                 : pending.length > 0
-                  ? `Restore ${pending.length} photo${pending.length > 1 ? "s" : ""}`
+                  ? `Restore ${pending.length} ${mediaNoun(
+                      pending.map((p) => p.file),
+                      pending.length,
+                    )}`
                   : "Restore photos"}
             </Button>
           </div>
