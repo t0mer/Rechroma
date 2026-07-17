@@ -1,4 +1,4 @@
-# Rechroma CPU image (multi-arch: linux/amd64, linux/arm64).
+# Rechroma CPU image (linux/amd64).
 # Multi-stage: build the frontend with Node, then a slim Python runtime with the
 # CPU PyTorch wheels. Final image has the built static assets and no Node.
 
