@@ -13,7 +13,7 @@ from loguru import logger
 from PIL import Image
 
 from . import media, temporal
-from .colorizer import DeOldifyColorizer
+from .colorizer import ColorizerModel, DeOldifyColorizer
 from .media import FRAME_GLOB
 
 
@@ -47,7 +47,7 @@ def check_caps(info: media.VideoInfo, caps: VideoCaps) -> None:
 class VideoColorizer:
     def __init__(
         self,
-        model: str = "artistic",
+        model: ColorizerModel = "artistic",
         device: str = "auto",
         models_dir: Path = Path("/data/models"),
         base_url: str | None = None,
