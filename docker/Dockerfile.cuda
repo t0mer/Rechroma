@@ -20,10 +20,14 @@ ENV PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends \
       python3 python3-pip libgl1 libglib2.0-0 curl ffmpeg \
     && ln -sf /usr/bin/python3 /usr/bin/python \
     && rm -rf /var/lib/apt/lists/*
+
+# Patch build tooling (pip/setuptools/wheel) so image scans stay clean.
+RUN python -m pip install --no-cache-dir --break-system-packages --upgrade pip setuptools wheel
 
 # Default PyPI torch wheels are CUDA-enabled (cu12x) — exactly what we want here.
 RUN python -m pip install --no-cache-dir --break-system-packages torch torchvision

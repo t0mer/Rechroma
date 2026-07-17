@@ -39,17 +39,43 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build & push CPU image (amd64)
+      # Build the CPU image locally (load into the daemon) and scan it BEFORE
+      # pushing, so a vulnerable image is never published.
+      - name: Build CPU image (amd64) — load for scanning
         uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/Dockerfile.cpu
           platforms: linux/amd64
-          push: true
+          load: true
+          push: false
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/rechroma:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/rechroma:${{ steps.version.outputs.version }}
 
+      - name: Trivy scan CPU image (fail on HIGH/CRITICAL with a fix)
+        # Pinned to v0.36.0's commit. Use >= v0.32.0: earlier trivy-action tags
+        # internally reference deleted aquasecurity/setup-trivy tags (v0.2.1/v0.2.2)
+        # and fail to resolve; v0.32.0+ pin setup-trivy by SHA.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/rechroma:${{ steps.version.outputs.version }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Push CPU image (only reached if the scan passed)
+        env:
+          IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/rechroma
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          docker push "$IMAGE:$VERSION"
+          docker push "$IMAGE:latest"
+
+      # The CUDA image is built and pushed only after the CPU gate passes. It is
+      # not Trivy-gated: its nvidia/cuda base carries base-OS CVEs that can't be
+      # patched from here, and loading the multi-GB image to scan it is heavy.
       - name: Build & push CUDA image (amd64)
         uses: docker/build-push-action@v6
         with:
@@ -60,17 +86,6 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/rechroma:latest-cuda
             ${{ secrets.DOCKERHUB_USERNAME }}/rechroma:${{ steps.version.outputs.version }}-cuda
-
-      - name: Trivy scan (fail on HIGH/CRITICAL with a fix)
-        # Pinned to v0.36.0's commit. Use >= v0.32.0: earlier trivy-action tags
-        # internally reference deleted aquasecurity/setup-trivy tags (v0.2.1/v0.2.2)
-        # and fail to resolve; v0.32.0+ pin setup-trivy by SHA.
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
-        with:
-          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/rechroma:${{ steps.version.outputs.version }}
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: "1"
 
       - name: Tag published version
         env:
