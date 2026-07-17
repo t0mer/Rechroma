@@ -7,8 +7,13 @@ from app.jobs.store import JobStore
 
 def _job(jid, kind="video"):
     return Job(
-        jid, JobStatus.QUEUED, PipelineOptions(), f"/i/{jid}",
-        kind=kind, name=f"{jid}.mp4", created_at=1.0,
+        jid,
+        JobStatus.QUEUED,
+        PipelineOptions(),
+        f"/i/{jid}",
+        kind=kind,
+        name=f"{jid}.mp4",
+        created_at=1.0,
     )
 
 
