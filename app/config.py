@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ENV_PREFIX = "RECHROMA_"
@@ -39,6 +39,18 @@ class Settings(BaseSettings):
     allowed_chat_ids: list[int] = []  # allowlist; empty = only admins may use the bot
     admin_chat_ids: list[int] = []
 
+    # Video (v2)
+    video_enabled: bool = True
+    video_max_seconds: int = 30
+    video_max_resolution: int = 1080  # longer side; larger clips are rejected
+    video_max_fps: int = 24
+    video_max_mb: int = 200
+    telegram_video_max_mb: int = 20
+    video_smoothing_window: int = 5  # temporal chroma window; 1 disables
+    video_render_factor: int = 21
+    video_crf: int = 18
+    video_workspace_dir: Path | None = None  # defaults to ${data_dir}/video
+
     @field_validator("allowed_chat_ids", "admin_chat_ids", mode="before")
     @classmethod
     def _split_ids(cls, v: Any) -> Any:
@@ -46,6 +58,12 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return [int(part) for part in v.replace(",", " ").split()]
         return v
+
+    @model_validator(mode="after")
+    def _default_video_workspace(self) -> "Settings":
+        if self.video_workspace_dir is None:
+            self.video_workspace_dir = self.data_dir / "video"
+        return self
 
 
 def load_settings(config_path: Path | None = None, **overrides: Any) -> Settings:

@@ -23,3 +23,17 @@ telegram_bot_token:
 telegram_webhook_url:        # set to run in webhook mode instead of long-polling
 allowed_chat_ids: []         # allowlist; EMPTY = only admins may use the bot (never open)
 admin_chat_ids: []           # always allowed; can use the bot even with an empty allowlist
+
+# --- Video (v2) ---
+# Video is colorize-only per frame with light temporal chroma smoothing.
+# CPU video is very slow; a GPU is strongly recommended. Over-cap clips are rejected.
+video_enabled: true
+video_max_seconds: 30        # reject longer clips
+video_max_resolution: 1080   # longer side; larger is rejected
+video_max_fps: 24            # frames are extracted at <= this
+video_max_mb: 200            # max upload size for video (web)
+telegram_video_max_mb: 20    # smaller cap for Telegram (bot download limit)
+video_smoothing_window: 5    # temporal chroma window; 1 disables
+video_render_factor: 21      # modest default for speed across many frames
+video_crf: 18                # x264 quality (lower = better/larger)
+video_workspace_dir:         # blank = ${data_dir}/video
