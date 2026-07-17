@@ -5,8 +5,11 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
+from typing import Literal
 
 from app.core.pipeline import PipelineOptions
+
+JobKind = Literal["image", "video"]
 
 
 class JobStatus(StrEnum):
@@ -26,6 +29,8 @@ class Job:
     input_path: str
     source: str = "web"  # web | telegram
     source_ref: str | None = None  # e.g. telegram chat id
+    kind: JobKind = "image"
+    progress: float = 0.0
     result_path: str | None = None
     error: str | None = None
     created_at: float = 0.0

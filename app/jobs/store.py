@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS jobs (
     input_path   TEXT NOT NULL,
     source       TEXT NOT NULL DEFAULT 'web',
     source_ref   TEXT,
+    kind         TEXT NOT NULL DEFAULT 'image',
+    progress     REAL NOT NULL DEFAULT 0,
     result_path  TEXT,
     error        TEXT,
     created_at   REAL NOT NULL,
@@ -40,6 +42,12 @@ class JobStore:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with self._conn() as conn:
             conn.executescript(_SCHEMA)
+            # Migrate pre-v2 databases created before the video columns existed.
+            cols = {row[1] for row in conn.execute("PRAGMA table_info(jobs)")}
+            if "kind" not in cols:
+                conn.execute("ALTER TABLE jobs ADD COLUMN kind TEXT NOT NULL DEFAULT 'image'")
+            if "progress" not in cols:
+                conn.execute("ALTER TABLE jobs ADD COLUMN progress REAL NOT NULL DEFAULT 0")
 
     @contextmanager
     def _conn(self) -> Iterator[sqlite3.Connection]:
@@ -62,6 +70,8 @@ class JobStore:
             input_path=row["input_path"],
             source=row["source"],
             source_ref=row["source_ref"],
+            kind=row["kind"],
+            progress=row["progress"],
             result_path=row["result_path"],
             error=row["error"],
             created_at=row["created_at"],
@@ -73,9 +83,9 @@ class JobStore:
         with self._conn() as conn:
             conn.execute(
                 """INSERT INTO jobs
-                   (id, status, options, input_path, source, source_ref,
+                   (id, status, options, input_path, source, source_ref, kind, progress,
                     result_path, error, created_at, started_at, finished_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     job.id,
                     job.status.value,
@@ -83,6 +93,8 @@ class JobStore:
                     job.input_path,
                     job.source,
                     job.source_ref,
+                    job.kind,
+                    job.progress,
                     job.result_path,
                     job.error,
                     job.created_at,
@@ -104,6 +116,11 @@ class JobStore:
         cols = ", ".join(f"{k}=?" for k in fields)
         with self._conn() as conn:
             conn.execute(f"UPDATE jobs SET {cols} WHERE id=?", (*fields.values(), job_id))
+
+    def set_progress(self, job_id: str, value: float) -> None:
+        """Update a job's progress fraction (0.0–1.0). Cheap; called frequently."""
+        with self._conn() as conn:
+            conn.execute("UPDATE jobs SET progress=? WHERE id=?", (float(value), job_id))
 
     def list_jobs(self, limit: int = 50, offset: int = 0) -> list[Job]:
         with self._conn() as conn:
