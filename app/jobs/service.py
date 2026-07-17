@@ -73,6 +73,7 @@ class JobService:
         input_path: str,
         source: str = "web",
         source_ref: str | None = None,
+        kind: str = "image",
     ) -> Job:
         """Create + enqueue a job, enforcing the per-source rate limit."""
         now = self._clock()
@@ -87,6 +88,7 @@ class JobService:
             input_path=input_path,
             source=source,
             source_ref=source_ref,
+            kind=kind,  # type: ignore[arg-type]
             created_at=now,
         )
         self.store.add(job)
