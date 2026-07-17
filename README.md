@@ -13,6 +13,15 @@ weights — plus GFPGAN face restoration and Real-ESRGAN upscaling.
 > Photos in, photos out — nothing is retained by default (originals and results
 > are deleted after 24h; configurable, `0` = delete immediately after delivery).
 
+## Demo
+
+A ~40s walkthrough of the web UI — upload a black & white photo, pick a preset,
+and get a colorized result with a before/after slider:
+
+https://github.com/user-attachments/assets/34d595f0-1b14-4553-8597-6d11fd28cfc8
+
+_Can't see the player? [Download the demo](assets/demo/rechroma-demo.mp4)._
+
 ## Screenshots
 
 ### Web UI
