@@ -63,8 +63,10 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/rechroma:${{ steps.version.outputs.version }}-cuda
 
       - name: Trivy scan (fail on HIGH/CRITICAL with a fix)
-        # Pinned to the v0.28.0 commit (the tag is v0.28.0, not 0.28.0).
-        uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2
+        # Pinned to v0.36.0's commit. Use >= v0.32.0: earlier trivy-action tags
+        # internally reference deleted aquasecurity/setup-trivy tags (v0.2.1/v0.2.2)
+        # and fail to resolve; v0.32.0+ pin setup-trivy by SHA.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/rechroma:${{ steps.version.outputs.version }}
           severity: HIGH,CRITICAL
