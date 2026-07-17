@@ -27,6 +27,13 @@ restored image) and a full-quality download:
 
 ![Before / after slider](assets/screenshots/result-before-after.png)
 
+### Video colorization (v2)
+Submit a short video and get it back colorized, with its original audio intact and
+a live progress bar while it runs:
+
+![Video colorizing — progress](assets/screenshots/video-progress.png)
+![Video result — player](assets/screenshots/video-result.png)
+
 ## Features
 
 - **Colorize** B&W / sepia photos — DeOldify *artistic* (vivid) and *stable*
@@ -44,6 +51,32 @@ restored image) and a full-quality download:
   outputs, upload validation by magic bytes with decompression-bomb protection.
 - Weights are **downloaded at first start** with SHA-256 verification into a
   persistent volume (pre-seed or mirror them for air-gapped installs).
+
+## Video (v2)
+
+Video is colorize-only per frame with light **temporal chroma smoothing** to tame
+flicker; the original audio is muxed back in. It reuses the same colorization core
+as photos — a video is just N frames plus an audio track.
+
+> **A GPU is strongly recommended for video.** On CPU each frame takes seconds, so
+> even a short clip can take many minutes. The UI shows a live progress bar.
+
+Conservative, configurable caps protect a self-hosted box (over-cap clips are
+rejected, not silently downscaled):
+
+| Cap | Default | Env |
+|---|---|---|
+| Max duration | 30 s | `RECHROMA_VIDEO_MAX_SECONDS` |
+| Max resolution (longer side) | 1080 | `RECHROMA_VIDEO_MAX_RESOLUTION` |
+| Processing fps | 24 | `RECHROMA_VIDEO_MAX_FPS` |
+| Max upload (web) | 200 MB | `RECHROMA_VIDEO_MAX_MB` |
+| Max upload (Telegram) | 20 MB | `RECHROMA_TELEGRAM_VIDEO_MAX_MB` |
+| Temporal smoothing window | 5 (`1` = off) | `RECHROMA_VIDEO_SMOOTHING_WINDOW` |
+| Render factor | 21 | `RECHROMA_VIDEO_RENDER_FACTOR` |
+
+Telegram accepts videos too (colorize preset), subject to its smaller size cap and
+Telegram's own bot download limits. Disable video entirely with
+`RECHROMA_VIDEO_ENABLED=false`.
 
 ## Quick start (CPU, Docker Compose)
 
