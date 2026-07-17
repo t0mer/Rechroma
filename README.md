@@ -18,7 +18,9 @@ weights — plus GFPGAN face restoration and Real-ESRGAN upscaling.
 A ~40s walkthrough of the web UI — upload a black & white photo, pick a preset,
 and get a colorized result with a before/after slider:
 
-▶ [**Watch the demo**](assets/demo/rechroma-demo.mp4) (`assets/demo/rechroma-demo.mp4`)
+https://github.com/user-attachments/assets/34d595f0-1b14-4553-8597-6d11fd28cfc8
+
+_Can't see the player? [Download the demo](assets/demo/rechroma-demo.mp4)._
 
 ## Screenshots
 
