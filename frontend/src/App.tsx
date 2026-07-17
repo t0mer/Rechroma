@@ -94,6 +94,8 @@ export default function App() {
           originalUrl: pf.previewUrl,
           jobId: job.id,
           status: job.status,
+          kind: job.kind,
+          progress: job.progress,
           queuePosition: job.queue_position,
           error: job.error,
           hasResult: job.has_result,
@@ -139,6 +141,8 @@ export default function App() {
           ? {
               ...t,
               status: job.status,
+              kind: job.kind,
+              progress: job.progress,
               queuePosition: job.queue_position,
               error: job.error,
               hasResult: job.has_result,

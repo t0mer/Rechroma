@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { ImagePlus, UploadCloud, X } from "lucide-react";
+import { Film, ImagePlus, UploadCloud, X } from "lucide-react";
 import { cn, formatBytes } from "@/lib/utils";
 
 export interface PendingFile {
@@ -8,18 +8,29 @@ export interface PendingFile {
   previewUrl: string;
 }
 
-const ACCEPT = ".jpg,.jpeg,.png,.webp,.tif,.tiff,.bmp";
+const ACCEPT =
+  ".jpg,.jpeg,.png,.webp,.tif,.tiff,.bmp,.mp4,.mov,.webm,.mkv,.avi";
 const ACCEPTED_MIME = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
   "image/tiff",
   "image/bmp",
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+  "video/x-matroska",
+  "video/x-msvideo",
 ]);
-const ACCEPTED_EXT = /\.(jpe?g|png|webp|tiff?|bmp)$/i;
+const ACCEPTED_EXT = /\.(jpe?g|png|webp|tiff?|bmp|mp4|mov|webm|mkv|avi)$/i;
+const VIDEO_EXT = /\.(mp4|mov|webm|mkv|avi)$/i;
 
 function isAccepted(file: File): boolean {
   return ACCEPTED_MIME.has(file.type) || ACCEPTED_EXT.test(file.name);
+}
+
+function isVideo(file: File): boolean {
+  return file.type.startsWith("video/") || VIDEO_EXT.test(file.name);
 }
 
 interface UploadPanelProps {
@@ -105,7 +116,7 @@ export function UploadPanel({
           Drop photos here, or click to browse
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          JPEG, PNG, WebP, TIFF or BMP · multiple at once
+          Photos (JPEG, PNG, WebP, TIFF, BMP) or short videos (MP4, MOV, WebM)
         </p>
       </div>
 
@@ -116,16 +127,24 @@ export function UploadPanel({
               key={f.id}
               className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-muted"
             >
-              <img
-                src={f.previewUrl}
-                alt={f.file.name}
-                loading="lazy"
-                className="h-full w-full object-cover"
-                onError={(e) => {
-                  (e.currentTarget.style.display = "none");
-                }}
-              />
-              <ImagePlus className="absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 text-muted-foreground/50" />
+              {isVideo(f.file) ? (
+                <div className="grid h-full w-full place-items-center bg-muted">
+                  <Film className="h-6 w-6 text-muted-foreground" />
+                </div>
+              ) : (
+                <>
+                  <img
+                    src={f.previewUrl}
+                    alt={f.file.name}
+                    loading="lazy"
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                  <ImagePlus className="absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 text-muted-foreground/50" />
+                </>
+              )}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
