@@ -11,10 +11,10 @@ from pathlib import Path
 from PIL import Image
 
 from app.core.pipeline import build_steps, run_pipeline
-from app.core.video import VideoCaps, VideoColorizer
+from app.core.video import VideoCancelled, VideoCaps, VideoColorizer
 
 from .models import Job
-from .service import Processor
+from .service import JobCancelled, Processor
 
 
 def make_pipeline_processor(
@@ -39,6 +39,10 @@ def make_pipeline_processor(
     return process
 
 
+def _never_cancel(_id: str) -> bool:
+    return False
+
+
 def make_video_processor(
     output_dir: Path,
     workspace_dir: Path,
@@ -47,11 +51,13 @@ def make_video_processor(
     device: str = "auto",
     models_dir: Path = Path("/data/models"),
     base_url: str | None = None,
+    is_cancelled: Callable[[str], bool] = _never_cancel,
 ) -> Processor:
     """Build a ``Processor`` that colorizes a video and reports progress.
 
     The per-job frame workspace under ``workspace_dir`` is always removed in a
-    ``finally``. ``report(job_id, fraction)`` writes progress to the store.
+    ``finally``. ``report(job_id, fraction)`` writes progress to the store, and
+    ``is_cancelled(job_id)`` lets the frame loop abort a cancelled job.
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -72,7 +78,10 @@ def make_video_processor(
                 out_path,
                 ws,
                 on_progress=lambda f: report(job.id, f),
+                should_cancel=lambda: is_cancelled(job.id),
             )
+        except VideoCancelled as e:
+            raise JobCancelled() from e
         finally:
             shutil.rmtree(ws, ignore_errors=True)
         return str(out_path)

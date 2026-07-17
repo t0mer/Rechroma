@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, Download, Film, ImageIcon, Loader2 } from "lucide-react";
+import { AlertTriangle, Download, Film, ImageIcon, Loader2, X } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { BeforeAfterSlider } from "@/components/BeforeAfterSlider";
@@ -38,7 +38,13 @@ function StatusBadge({ job }: { job: TrackedJob }) {
   }
 }
 
-export function JobCard({ job }: { job: TrackedJob }) {
+export function JobCard({
+  job,
+  onRemove,
+}: {
+  job: TrackedJob;
+  onRemove: (jobId: string) => void;
+}) {
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [resultError, setResultError] = useState<string | null>(null);
 
@@ -88,7 +94,18 @@ export function JobCard({ job }: { job: TrackedJob }) {
             {job.name}
           </p>
         </div>
-        <StatusBadge job={job} />
+        <div className="flex shrink-0 items-center gap-1.5">
+          <StatusBadge job={job} />
+          <button
+            type="button"
+            onClick={() => onRemove(job.jobId)}
+            aria-label={active ? "Cancel job" : "Remove job"}
+            title={active ? "Cancel" : "Remove"}
+            className="grid h-6 w-6 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {active && (

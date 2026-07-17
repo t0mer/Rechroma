@@ -76,3 +76,14 @@ def test_colorize_video_no_audio_ok(tmp_path):
     vc = VideoColorizer(caps=_caps(), colorizer=_TintColorizer())
     vc.colorize_video(src, out, tmp_path / "ws")
     assert probe(out).has_audio is False
+
+
+def test_colorize_video_aborts_on_cancel(tmp_path):
+    from app.core.video import VideoCancelled
+
+    src = tmp_path / "in.mp4"
+    _clip(src, seconds=1, fps=10, audio=False)
+    vc = VideoColorizer(caps=_caps(), colorizer=_TintColorizer())
+    with pytest.raises(VideoCancelled):
+        vc.colorize_video(src, tmp_path / "out.mp4", tmp_path / "ws", should_cancel=lambda: True)
+    assert not (tmp_path / "out.mp4").exists()

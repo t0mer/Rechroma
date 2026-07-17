@@ -10,6 +10,7 @@ interface HeaderProps {
   theme: "light" | "dark";
   onToggleTheme: () => void;
   activeJobs: TrackedJob[];
+  onRemove: (jobId: string) => void;
 }
 
 /** The chroma mark: a lens aperture split half grey / half warm — the app's job. */
@@ -28,7 +29,7 @@ function Mark() {
   );
 }
 
-export function Header({ theme, onToggleTheme, activeJobs }: HeaderProps) {
+export function Header({ theme, onToggleTheme, activeJobs, onRemove }: HeaderProps) {
   const [showToken, setShowToken] = useState(false);
   const [token, setLocalToken] = useState(getToken());
 
@@ -53,7 +54,7 @@ export function Header({ theme, onToggleTheme, activeJobs }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-1.5">
-          <ActivityIndicator jobs={activeJobs} />
+          <ActivityIndicator jobs={activeJobs} onRemove={onRemove} />
           <div className="relative">
             <Button
               variant="ghost"

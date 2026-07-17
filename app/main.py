@@ -65,6 +65,8 @@ def create_app(settings: Settings | None = None, processor: Processor | None = N
             device=settings.device,
             models_dir=settings.models_dir,
             base_url=settings.model_base_url,
+            # `service` is bound just below; the lambda is only called at run time.
+            is_cancelled=lambda jid: service.is_cancelled(jid),
         )
         proc = make_dispatch_processor(image_proc, video_proc)
     service = JobService(

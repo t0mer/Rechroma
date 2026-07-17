@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Loader2 } from "lucide-react";
+import { ChevronDown, Loader2, X } from "lucide-react";
 import type { TrackedJob } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -7,7 +7,13 @@ import { cn } from "@/lib/utils";
  * Header pill + popover that surfaces jobs running in the background so the user
  * always knows work is in flight. Hidden entirely when nothing is active.
  */
-export function ActivityIndicator({ jobs }: { jobs: TrackedJob[] }) {
+export function ActivityIndicator({
+  jobs,
+  onRemove,
+}: {
+  jobs: TrackedJob[];
+  onRemove: (jobId: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -52,7 +58,7 @@ export function ActivityIndicator({ jobs }: { jobs: TrackedJob[] }) {
           </p>
           <ul className="space-y-1.5">
             {jobs.map((job) => (
-              <ActivityRow key={job.jobId} job={job} />
+              <ActivityRow key={job.jobId} job={job} onRemove={onRemove} />
             ))}
           </ul>
         </div>
@@ -61,7 +67,13 @@ export function ActivityIndicator({ jobs }: { jobs: TrackedJob[] }) {
   );
 }
 
-function ActivityRow({ job }: { job: TrackedJob }) {
+function ActivityRow({
+  job,
+  onRemove,
+}: {
+  job: TrackedJob;
+  onRemove: (jobId: string) => void;
+}) {
   const pct = Math.round(job.progress * 100);
   const showBar = job.status === "running" && job.kind === "video";
   let status: string;
@@ -83,6 +95,15 @@ function ActivityRow({ job }: { job: TrackedJob }) {
           {job.name}
         </span>
         <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{status}</span>
+        <button
+          type="button"
+          onClick={() => onRemove(job.jobId)}
+          aria-label="Cancel job"
+          title="Cancel"
+          className="grid h-5 w-5 shrink-0 place-items-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
       </div>
       {showBar && (
         <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">

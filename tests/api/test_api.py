@@ -120,3 +120,23 @@ def test_auth_required_when_token_set(tmp_path):
 def test_auth_rejects_bad_token(tmp_path, tok):
     with _client(tmp_path, web_auth_token="secret") as client:
         assert client.get("/api/v1/jobs", headers={"X-API-Token": tok}).status_code == 401
+
+
+def test_delete_job_removes_it(tmp_path):
+    with _client(tmp_path) as client:
+        r = client.post(
+            "/api/v1/jobs",
+            files={"file": ("in.png", _png(), "image/png")},
+            data={"preset": "colorize"},
+        )
+        job_id = r.json()["id"]
+        _wait_done(client, job_id)
+        # remove it
+        d = client.delete(f"/api/v1/jobs/{job_id}")
+        assert d.status_code == 204
+        assert client.get(f"/api/v1/jobs/{job_id}").status_code == 404
+
+
+def test_delete_unknown_job_404(tmp_path):
+    with _client(tmp_path) as client:
+        assert client.delete("/api/v1/jobs/deadbeef").status_code == 404
