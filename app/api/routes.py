@@ -29,7 +29,7 @@ async def create_job(
     upscale: int | None = Form(None),
     restore_faces: bool = Form(True),
 ) -> JobOut:
-    from .uploads import UploadError, save_validated_upload
+    from .uploads import UploadError, save_validated_upload, save_validated_video, sniff_media_type
 
     settings = request.app.state.settings
     service = request.app.state.service
@@ -46,13 +46,30 @@ async def create_job(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.errors()) from e
 
     data = await file.read()
+    kind = sniff_media_type(data)
+    job_uuid = uuid4().hex
     try:
-        path = save_validated_upload(
-            data,
-            settings.data_dir / "inputs",
-            uuid4().hex,
-            settings.max_upload_mb * 1024 * 1024,
-        )
+        if kind == "video":
+            if not settings.video_enabled:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="video processing disabled")
+            from app.main import video_caps_from_settings
+
+            path = save_validated_video(
+                data,
+                settings.data_dir / "inputs",
+                job_uuid,
+                settings.video_max_mb * 1024 * 1024,
+                caps=video_caps_from_settings(settings),
+            )
+        elif kind == "image":
+            path = save_validated_upload(
+                data,
+                settings.data_dir / "inputs",
+                job_uuid,
+                settings.max_upload_mb * 1024 * 1024,
+            )
+        else:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="unsupported file type")
     except UploadError as e:
         code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE if "too large" in str(e) else 400
         raise HTTPException(code, detail=str(e)) from e
@@ -60,7 +77,11 @@ async def create_job(
     source_ref = request.client.host if request.client else None
     try:
         job = await service.submit(
-            options.to_pipeline_options(), str(path), source="web", source_ref=source_ref
+            options.to_pipeline_options(),
+            str(path),
+            source="web",
+            source_ref=source_ref,
+            kind=kind,
         )
     except RateLimitError as e:
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, detail=str(e)) from e
@@ -92,4 +113,6 @@ def get_result(request: Request, job_id: str) -> FileResponse:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="job not found")
     if job.status is not JobStatus.DONE or not job.result_path:
         raise HTTPException(status.HTTP_409_CONFLICT, detail=f"job is {job.status}, no result yet")
+    if job.kind == "video":
+        return FileResponse(job.result_path, media_type="video/mp4", filename=f"{job_id}.mp4")
     return FileResponse(job.result_path, media_type="image/png", filename=f"{job_id}.png")

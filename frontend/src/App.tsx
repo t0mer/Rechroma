@@ -10,6 +10,7 @@ import { useToast } from "@/components/Toaster";
 import { useTheme } from "@/hooks/useTheme";
 import { useJobPolling } from "@/hooks/useJobPolling";
 import { createJob, getHealth, type Health, type Job, type JobOptions } from "@/lib/api";
+import { mediaNoun } from "@/lib/utils";
 import type { TrackedJob } from "@/types";
 
 let counter = 0;
@@ -94,6 +95,8 @@ export default function App() {
           originalUrl: pf.previewUrl,
           jobId: job.id,
           status: job.status,
+          kind: job.kind,
+          progress: job.progress,
           queuePosition: job.queue_position,
           error: job.error,
           hasResult: job.has_result,
@@ -113,20 +116,21 @@ export default function App() {
     setPending([]);
     setSubmitting(false);
 
+    const submittedFiles = files.map((pf) => pf.file);
     if (failures > 0) {
       const reason =
         results.find((r) => r.status === "rejected") &&
         (results.find((r) => r.status === "rejected") as PromiseRejectedResult)
           .reason;
       toast.error(
-        `${failures} photo${failures > 1 ? "s" : ""} couldn't be submitted${
+        `${failures} ${mediaNoun(submittedFiles, failures)} couldn't be submitted${
           reason?.message ? `: ${reason.message}` : "."
         }`,
       );
     }
     if (newJobs.length > 0) {
       toast.success(
-        `${newJobs.length} photo${newJobs.length > 1 ? "s" : ""} sent for restoration.`,
+        `${newJobs.length} ${mediaNoun(submittedFiles, newJobs.length)} sent for restoration.`,
       );
     }
   }, [options, submitting, toast]);
@@ -139,6 +143,8 @@ export default function App() {
           ? {
               ...t,
               status: job.status,
+              kind: job.kind,
+              progress: job.progress,
               queuePosition: job.queue_position,
               error: job.error,
               hasResult: job.has_result,
@@ -153,9 +159,10 @@ export default function App() {
     console.warn(`poll ${id}: ${message}`);
   }, []);
 
-  const activeIds = tracked
-    .filter((t) => t.status === "queued" || t.status === "running")
-    .map((t) => t.jobId);
+  const activeJobs = tracked.filter(
+    (t) => t.status === "queued" || t.status === "running",
+  );
+  const activeIds = activeJobs.map((t) => t.jobId);
 
   useJobPolling(activeIds, onUpdate, onPollError);
 
@@ -184,7 +191,7 @@ export default function App() {
 
   return (
     <div className="min-h-dvh">
-      <Header theme={theme} onToggleTheme={toggle} />
+      <Header theme={theme} onToggleTheme={toggle} activeJobs={activeJobs} />
 
       <main className="mx-auto max-w-6xl px-4 pb-16 pt-8 sm:px-6">
         <section className="mb-8 max-w-2xl">
@@ -238,7 +245,10 @@ export default function App() {
               {submitting
                 ? "Sending…"
                 : pending.length > 0
-                  ? `Restore ${pending.length} photo${pending.length > 1 ? "s" : ""}`
+                  ? `Restore ${pending.length} ${mediaNoun(
+                      pending.map((p) => p.file),
+                      pending.length,
+                    )}`
                   : "Restore photos"}
             </Button>
           </div>

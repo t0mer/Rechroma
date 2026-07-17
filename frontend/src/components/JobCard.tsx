@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, Download, Loader2 } from "lucide-react";
+import { AlertTriangle, Download, Film, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { BeforeAfterSlider } from "@/components/BeforeAfterSlider";
+import { VideoResult } from "@/components/VideoResult";
 import { fetchResultObjectUrl } from "@/lib/api";
 import type { TrackedJob } from "@/types";
 import { cn } from "@/lib/utils";
@@ -92,28 +93,46 @@ export function JobCard({ job }: { job: TrackedJob }) {
 
       {active && (
         <div className="relative aspect-[4/3] w-full overflow-hidden">
-          <img
-            src={job.originalUrl}
-            alt={job.name}
-            className={cn(
-              "h-full w-full object-contain",
-              job.status === "running" ? "opacity-90" : "opacity-60 grayscale",
-            )}
-          />
+          {job.kind === "video" ? (
+            <div className="grid h-full w-full place-items-center bg-muted">
+              <Film className="h-9 w-9 text-muted-foreground/60" />
+            </div>
+          ) : (
+            <img
+              src={job.originalUrl}
+              alt={job.name}
+              className={cn(
+                "h-full w-full object-contain",
+                job.status === "running" ? "opacity-90" : "opacity-60 grayscale",
+              )}
+            />
+          )}
           <div className="shimmer pointer-events-none absolute inset-0" />
-          <div className="absolute inset-x-0 bottom-0 flex items-center gap-2 bg-gradient-to-t from-black/60 to-transparent px-3 pb-2.5 pt-8 text-xs text-white">
-            {job.status === "running" ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Restoring…
-              </>
-            ) : (
-              <>
-                Waiting in queue
-                {job.queuePosition != null && job.queuePosition > 0
-                  ? ` · position ${job.queuePosition}`
-                  : ""}
-              </>
+          <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1.5 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2.5 pt-8 text-xs text-white">
+            <div className="flex items-center gap-2">
+              {job.status === "running" ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  {job.kind === "video"
+                    ? `Colorizing video… ${Math.round(job.progress * 100)}%`
+                    : "Restoring…"}
+                </>
+              ) : (
+                <>
+                  Waiting in queue
+                  {job.queuePosition != null && job.queuePosition > 0
+                    ? ` · position ${job.queuePosition}`
+                    : ""}
+                </>
+              )}
+            </div>
+            {job.status === "running" && job.kind === "video" && (
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/25">
+                <div
+                  className="h-full rounded-full bg-primary transition-[width] duration-500"
+                  style={{ width: `${Math.max(2, Math.round(job.progress * 100))}%` }}
+                />
+              </div>
             )}
           </div>
         </div>
@@ -131,10 +150,14 @@ export function JobCard({ job }: { job: TrackedJob }) {
       {job.status === "done" && (
         <div className="space-y-3 px-4 pb-4">
           {resultUrl ? (
-            <BeforeAfterSlider
-              beforeUrl={job.originalUrl}
-              afterUrl={resultUrl}
-            />
+            job.kind === "video" ? (
+              <VideoResult src={resultUrl} />
+            ) : (
+              <BeforeAfterSlider
+                beforeUrl={job.originalUrl}
+                afterUrl={resultUrl}
+              />
+            )
           ) : resultError ? (
             <div className="flex items-start gap-2.5 rounded-lg bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -149,7 +172,7 @@ export function JobCard({ job }: { job: TrackedJob }) {
           {resultUrl && (
             <a
               href={resultUrl}
-              download={`${baseName(job.name)}-rechroma.png`}
+              download={`${baseName(job.name)}-rechroma.${job.kind === "video" ? "mp4" : "png"}`}
               className="block"
             >
               <Button variant="outline" size="md" className="w-full">

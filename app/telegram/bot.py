@@ -56,19 +56,37 @@ class BotContext:
         self.settings = settings
         self.service = service
         self.chat_settings = ChatSettingsStore(settings.data_dir / "chat_settings.db")
-        self.pending: dict[str, str] = {}  # token -> input image path
+        self.pending: dict[str, tuple[str, str]] = {}  # token -> (input path, kind)
 
 
-def _preset_keyboard(token: str) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text="🎨 Colorize", callback_data=f"go:colorize:{token}"),
-                InlineKeyboardButton(text="✨ Restore", callback_data=f"go:restore:{token}"),
-                InlineKeyboardButton(text="🌟 Full", callback_data=f"go:full:{token}"),
-            ]
+def _preset_keyboard(token: str, kind: str = "image") -> InlineKeyboardMarkup:
+    if kind == "video":
+        # Video is colorize-only for v2.
+        row = [InlineKeyboardButton(text="🎨 Colorize", callback_data=f"go:colorize:{token}")]
+    else:
+        row = [
+            InlineKeyboardButton(text="🎨 Colorize", callback_data=f"go:colorize:{token}"),
+            InlineKeyboardButton(text="✨ Restore", callback_data=f"go:restore:{token}"),
+            InlineKeyboardButton(text="🌟 Full", callback_data=f"go:full:{token}"),
         ]
-    )
+    return InlineKeyboardMarkup(inline_keyboard=[row])
+
+
+def _classify_media(message: Message) -> tuple[str | None, str | None, int | None]:
+    """Return (file_id, kind, size_bytes) for a photo/video/animation/document message."""
+    if message.video:
+        return message.video.file_id, "video", message.video.file_size
+    if message.animation:
+        return message.animation.file_id, "video", message.animation.file_size
+    if message.photo:
+        return message.photo[-1].file_id, "image", message.photo[-1].file_size
+    if message.document:
+        mime = message.document.mime_type or ""
+        if mime.startswith("video/"):
+            return message.document.file_id, "video", message.document.file_size
+        if mime.startswith("image/"):
+            return message.document.file_id, "image", message.document.file_size
+    return None, None, None
 
 
 def build_router(ctx: BotContext) -> Router:
@@ -168,26 +186,35 @@ def build_router(ctx: BotContext) -> Router:
             lines.append(f"• `{j.id[:8]}` — {j.status}" + (f" (#{pos})" if pos else ""))
         await message.answer("*Your active jobs*\n" + "\n".join(lines), parse_mode="Markdown")
 
-    @router.message(F.photo | F.document)
-    async def on_image(message: Message, bot: Bot) -> None:
+    @router.message(F.photo | F.video | F.animation | F.document)
+    async def on_media(message: Message, bot: Bot) -> None:
         if not await _guard(message):
             return
-        if message.document and not (message.document.mime_type or "").startswith("image/"):
-            await message.answer("Please send an image (photo or image file).")
+        file_id, kind, size = _classify_media(message)
+        if kind is None or file_id is None:
+            await message.answer("Please send an image or a video.")
             return
-        if message.document:
-            file_id = message.document.file_id
-        elif message.photo:
-            file_id = message.photo[-1].file_id
-        else:
-            return
+        if kind == "video":
+            if not ctx.settings.video_enabled:
+                await message.answer("Video processing is disabled.")
+                return
+            limit = ctx.settings.telegram_video_max_mb * 1024 * 1024
+            if size and size > limit:
+                mb = ctx.settings.telegram_video_max_mb
+                await message.answer(
+                    f"That video is too large for Telegram (max {mb} MB). "
+                    "Try a shorter clip, or use the web app."
+                )
+                return
         token = uuid.uuid4().hex[:12]
-        dest = ctx.settings.data_dir / "inputs" / f"tg_{token}.img"
+        ext = "mp4" if kind == "video" else "img"
+        dest = ctx.settings.data_dir / "inputs" / f"tg_{token}.{ext}"
         dest.parent.mkdir(parents=True, exist_ok=True)
         await bot.download(file_id, destination=dest)
-        ctx.pending[token] = str(dest)
+        ctx.pending[token] = (str(dest), kind)
+        noun = "video" if kind == "video" else "photo"
         await message.answer(
-            "What should I do with this photo?", reply_markup=_preset_keyboard(token)
+            f"What should I do with this {noun}?", reply_markup=_preset_keyboard(token, kind)
         )
 
     @router.callback_query(F.data.startswith("go:"))
@@ -198,10 +225,11 @@ def build_router(ctx: BotContext) -> Router:
             await callback.answer("Not allowed.", show_alert=True)
             return
         _, preset, token = callback.data.split(":", 2)  # type: ignore[union-attr]
-        input_path = ctx.pending.pop(token, None)
-        if input_path is None:
-            await callback.answer("That photo expired, please resend it.", show_alert=True)
+        pending = ctx.pending.pop(token, None)
+        if pending is None:
+            await callback.answer("That upload expired, please resend it.", show_alert=True)
             return
+        input_path, kind = pending
         await callback.answer()
         status_msg = await bot.send_message(chat_id, "Queued…")
         cs = ctx.chat_settings.get(chat_id)
@@ -209,8 +237,8 @@ def build_router(ctx: BotContext) -> Router:
             preset=preset,  # type: ignore[arg-type]
             colorizer_model=cs.model,  # type: ignore[arg-type]
             render_factor=cs.render_factor,
-            upscale=2 if preset in ("restore", "full") else None,
-            restore_faces=preset in ("restore", "full"),
+            upscale=2 if (kind == "image" and preset in ("restore", "full")) else None,
+            restore_faces=kind == "image" and preset in ("restore", "full"),
         )
 
         async def on_status(job) -> None:  # type: ignore[no-untyped-def]
@@ -223,12 +251,14 @@ def build_router(ctx: BotContext) -> Router:
             pos = ctx.service.store.queue_position(job.id)
             if job.status is JobStatus.QUEUED and pos:
                 text = f"Queued (#{pos})…"
+            elif job.status is JobStatus.RUNNING and job.progress > 0:
+                text = f"Processing… {int(job.progress * 100)}%"
             with contextlib.suppress(Exception):  # editing is best-effort
                 await bot.edit_message_text(text, chat_id=chat_id, message_id=status_msg.message_id)
 
         try:
             job = await process_and_wait(
-                ctx.service, options, input_path, chat_id, on_status=on_status
+                ctx.service, options, input_path, chat_id, on_status=on_status, kind=kind
             )
         except RateLimitError as e:
             await bot.edit_message_text(
@@ -249,11 +279,18 @@ def build_router(ctx: BotContext) -> Router:
                 message_id=status_msg.message_id,
             )
             return
-        data = Path(job.result_path).read_bytes()
-        await bot.send_photo(chat_id, BufferedInputFile(data, "preview.png"), caption="Preview")
-        await bot.send_document(
-            chat_id, FSInputFile(job.result_path, filename=f"rechroma_{job.id[:8]}.png")
-        )
+        if job.kind == "video":
+            await bot.send_video(
+                chat_id,
+                FSInputFile(job.result_path, filename=f"rechroma_{job.id[:8]}.mp4"),
+                caption="Colorized ✅",
+            )
+        else:
+            data = Path(job.result_path).read_bytes()
+            await bot.send_photo(chat_id, BufferedInputFile(data, "preview.png"), caption="Preview")
+            await bot.send_document(
+                chat_id, FSInputFile(job.result_path, filename=f"rechroma_{job.id[:8]}.png")
+            )
 
     return router
 

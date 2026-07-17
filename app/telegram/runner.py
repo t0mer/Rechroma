@@ -19,22 +19,28 @@ async def process_and_wait(
     poll_interval: float = 0.5,
     timeout: float = 900.0,
     on_status: object = None,
+    kind: str = "image",
 ) -> Job:
     """Submit a job and poll until it is done/failed. Returns the final Job.
 
     ``on_status`` (optional async callable) is invoked with the Job whenever its
-    status changes, so callers can update a progress message.
+    status **or rounded progress** changes, so callers can update a progress
+    message (useful for long video jobs).
     """
-    job = await service.submit(options, input_path, source="telegram", source_ref=str(chat_id))
+    job = await service.submit(
+        options, input_path, source="telegram", source_ref=str(chat_id), kind=kind
+    )
     loop = asyncio.get_event_loop()
     deadline = loop.time() + timeout
     last_status: JobStatus | None = None
+    last_pct = -1
     while True:
         current = service.store.get(job.id)
         if current is None:
             raise RuntimeError("job vanished from store")
-        if current.status != last_status:
-            last_status = current.status
+        pct = int(current.progress * 100)
+        if current.status != last_status or pct != last_pct:
+            last_status, last_pct = current.status, pct
             if on_status is not None:
                 await on_status(current)  # type: ignore[operator]
         if current.status in (JobStatus.DONE, JobStatus.FAILED):

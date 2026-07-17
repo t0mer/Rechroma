@@ -9,10 +9,14 @@ export type JobStatus = "queued" | "running" | "done" | "failed";
 export type Preset = "colorize" | "restore" | "full";
 export type ColorizerModel = "artistic" | "stable";
 
+export type JobKind = "image" | "video";
+
 export interface Job {
   id: string;
   status: JobStatus;
+  kind: JobKind;
   preset: string;
+  progress: number;
   queue_position: number | null;
   error: string | null;
   has_result: boolean;

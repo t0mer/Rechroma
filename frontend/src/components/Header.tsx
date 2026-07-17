@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { KeyRound, Moon, Sun } from "lucide-react";
+import { ActivityIndicator } from "@/components/ActivityIndicator";
 import { Button } from "@/components/ui/Button";
 import { getToken, setToken } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import type { TrackedJob } from "@/types";
 
 interface HeaderProps {
   theme: "light" | "dark";
   onToggleTheme: () => void;
+  activeJobs: TrackedJob[];
 }
 
 /** The chroma mark: a lens aperture split half grey / half warm — the app's job. */
@@ -25,7 +28,7 @@ function Mark() {
   );
 }
 
-export function Header({ theme, onToggleTheme }: HeaderProps) {
+export function Header({ theme, onToggleTheme, activeJobs }: HeaderProps) {
   const [showToken, setShowToken] = useState(false);
   const [token, setLocalToken] = useState(getToken());
 
@@ -50,6 +53,7 @@ export function Header({ theme, onToggleTheme }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-1.5">
+          <ActivityIndicator jobs={activeJobs} />
           <div className="relative">
             <Button
               variant="ghost"
