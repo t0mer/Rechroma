@@ -226,7 +226,7 @@ npm --prefix frontend ci && npm --prefix frontend run build
 ```
 
 CI runs lint, type-check, and tests on every push; the Docker workflow builds and
-publishes the multi-arch CPU (`amd64`+`arm64`) and CUDA (`amd64`) images.
+publishes the CPU (`amd64`) and CUDA (`amd64`) images.
 
 ## License
 
