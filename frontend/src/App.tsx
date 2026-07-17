@@ -11,6 +11,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useJobPolling } from "@/hooks/useJobPolling";
 import {
   createJob,
+  deleteJob,
   getHealth,
   listJobs,
   type Health,
@@ -166,6 +167,20 @@ export default function App() {
     console.warn(`poll ${id}: ${message}`);
   }, []);
 
+  // Cancel/remove a job: drop it from the UI immediately (optimistic) and tell
+  // the backend to cancel the queue slot / abort / dismiss it.
+  const removeJob = useCallback(
+    (jobId: string) => {
+      setTracked((prev) => {
+        const t = prev.find((x) => x.jobId === jobId);
+        if (t?.originalUrl) URL.revokeObjectURL(t.originalUrl);
+        return prev.filter((x) => x.jobId !== jobId);
+      });
+      deleteJob(jobId).catch((e: Error) => toast.error(`Couldn't remove job: ${e.message}`));
+    },
+    [toast],
+  );
+
   const activeJobs = tracked.filter(
     (t) => t.status === "queued" || t.status === "running",
   );
@@ -235,7 +250,12 @@ export default function App() {
 
   return (
     <div className="min-h-dvh">
-      <Header theme={theme} onToggleTheme={toggle} activeJobs={activeJobs} />
+      <Header
+        theme={theme}
+        onToggleTheme={toggle}
+        activeJobs={activeJobs}
+        onRemove={removeJob}
+      />
 
       <main className="mx-auto max-w-6xl px-4 pb-16 pt-8 sm:px-6">
         <section className="mb-8 max-w-2xl">
@@ -322,7 +342,7 @@ export default function App() {
             ) : (
               <div className="space-y-4">
                 {tracked.map((job) => (
-                  <JobCard key={job.key} job={job} />
+                  <JobCard key={job.key} job={job} onRemove={removeJob} />
                 ))}
               </div>
             )}

@@ -63,6 +63,8 @@ and live progress:
   and a Telegram bot (send a photo → pick a preset → get it back).
 - **Activity indicator:** a header pill lists tasks still running in the
   background with their status and live progress, so nothing is happening silently.
+- **Removable jobs:** a × on each card (and in the activity popover) cancels a
+  queued or running job or dismisses a finished one — a video aborts between frames.
 - **In-process async job queue** backed by SQLite (WAL) — no Redis/Postgres/Celery.
 - **Privacy first:** no telemetry, configurable retention, EXIF-GPS stripped from
   outputs, upload validation by magic bytes with decompression-bomb protection.
@@ -159,6 +161,7 @@ UI performs map to these endpoints:
 | `POST` | `/api/v1/jobs` | Submit an image (multipart) + options → job |
 | `GET` | `/api/v1/jobs/{id}` | Job status + queue position |
 | `GET` | `/api/v1/jobs/{id}/result` | Download the result image |
+| `DELETE` | `/api/v1/jobs/{id}` | Cancel/remove a job (queue, running, or finished) |
 | `GET` | `/api/v1/jobs` | List recent jobs |
 | `GET` | `/healthz` | Health (status, version, device, queue depth) |
 | `GET` | `/metrics` | Prometheus metrics |

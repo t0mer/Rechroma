@@ -109,6 +109,15 @@ export async function listJobs(): Promise<Job[]> {
   return (await res.json()) as Job[];
 }
 
+/** Cancel/remove a job (drop from queue, abort, or dismiss its result). */
+export async function deleteJob(id: string): Promise<void> {
+  const res = await fetch(`/api/v1/jobs/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok && res.status !== 404) throw new Error(await extractError(res));
+}
+
 /** Raw path to the result image. */
 export function resultUrl(id: string): string {
   return `/api/v1/jobs/${id}/result`;
