@@ -173,15 +173,19 @@ export default function App() {
 
   useJobPolling(activeIds, onUpdate, onPollError);
 
-  // Rehydrate jobs from the backend on load so work in progress (and recent
-  // results) survives a page refresh. The local "before" preview is a blob that
-  // can't be recovered, so rehydrated cards render result-only.
+  // Rehydrate only *active* (queued/running) jobs from the backend on load, so
+  // work in progress survives a page refresh without resurfacing completed
+  // history. The local "before" preview is a blob that can't be recovered, so
+  // rehydrated cards render result-only.
   useEffect(() => {
     let alive = true;
     listJobs()
       .then((jobs) => {
         if (!alive) return;
-        const rehydrated: TrackedJob[] = jobs.map((job) => ({
+        const active = jobs.filter(
+          (job) => job.status === "queued" || job.status === "running",
+        );
+        const rehydrated: TrackedJob[] = active.map((job) => ({
           key: job.id,
           name: job.name || (job.kind === "video" ? "video" : "photo"),
           originalUrl: "",
