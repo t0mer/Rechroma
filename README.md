@@ -34,6 +34,12 @@ a live progress bar while it runs:
 ![Video colorizing — progress](assets/screenshots/video-progress.png)
 ![Video result — player](assets/screenshots/video-result.png)
 
+### Background activity indicator
+A header pill shows tasks still running in the background, with per-task status
+and live progress:
+
+![Activity indicator](assets/screenshots/activity-indicator.png)
+
 ## Features
 
 - **Colorize** B&W / sepia photos — DeOldify *artistic* (vivid) and *stable*
@@ -46,6 +52,8 @@ a live progress bar while it runs:
   per-device defaults.
 - **Two front doors:** web SPA (drag-drop, live job status, before/after slider)
   and a Telegram bot (send a photo → pick a preset → get it back).
+- **Activity indicator:** a header pill lists tasks still running in the
+  background with their status and live progress, so nothing is happening silently.
 - **In-process async job queue** backed by SQLite (WAL) — no Redis/Postgres/Celery.
 - **Privacy first:** no telemetry, configurable retention, EXIF-GPS stripped from
   outputs, upload validation by magic bytes with decompression-bomb protection.

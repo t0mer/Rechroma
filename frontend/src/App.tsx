@@ -157,9 +157,10 @@ export default function App() {
     console.warn(`poll ${id}: ${message}`);
   }, []);
 
-  const activeIds = tracked
-    .filter((t) => t.status === "queued" || t.status === "running")
-    .map((t) => t.jobId);
+  const activeJobs = tracked.filter(
+    (t) => t.status === "queued" || t.status === "running",
+  );
+  const activeIds = activeJobs.map((t) => t.jobId);
 
   useJobPolling(activeIds, onUpdate, onPollError);
 
@@ -188,7 +189,7 @@ export default function App() {
 
   return (
     <div className="min-h-dvh">
-      <Header theme={theme} onToggleTheme={toggle} />
+      <Header theme={theme} onToggleTheme={toggle} activeJobs={activeJobs} />
 
       <main className="mx-auto max-w-6xl px-4 pb-16 pt-8 sm:px-6">
         <section className="mb-8 max-w-2xl">
