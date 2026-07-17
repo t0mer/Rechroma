@@ -31,6 +31,7 @@ class Job:
     source_ref: str | None = None  # e.g. telegram chat id
     kind: JobKind = "image"
     progress: float = 0.0
+    name: str = ""  # original upload filename (for display after a page refresh)
     result_path: str | None = None
     error: str | None = None
     created_at: float = 0.0

@@ -20,6 +20,7 @@ async def process_and_wait(
     timeout: float = 900.0,
     on_status: object = None,
     kind: str = "image",
+    name: str = "",
 ) -> Job:
     """Submit a job and poll until it is done/failed. Returns the final Job.
 
@@ -28,7 +29,7 @@ async def process_and_wait(
     message (useful for long video jobs).
     """
     job = await service.submit(
-        options, input_path, source="telegram", source_ref=str(chat_id), kind=kind
+        options, input_path, source="telegram", source_ref=str(chat_id), kind=kind, name=name
     )
     loop = asyncio.get_event_loop()
     deadline = loop.time() + timeout

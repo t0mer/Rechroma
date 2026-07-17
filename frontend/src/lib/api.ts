@@ -15,6 +15,7 @@ export interface Job {
   id: string;
   status: JobStatus;
   kind: JobKind;
+  name: string;
   preset: string;
   progress: number;
   queue_position: number | null;

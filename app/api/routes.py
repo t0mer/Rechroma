@@ -82,6 +82,7 @@ async def create_job(
             source="web",
             source_ref=source_ref,
             kind=kind,
+            name=file.filename or "",
         )
     except RateLimitError as e:
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, detail=str(e)) from e
