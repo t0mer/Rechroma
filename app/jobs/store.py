@@ -173,6 +173,11 @@ class JobStore:
             ).fetchone()
         return int(n)
 
+    def delete(self, job_id: str) -> None:
+        """Delete a single job record."""
+        with self._conn() as conn:
+            conn.execute("DELETE FROM jobs WHERE id=?", (job_id,))
+
     def delete_older_than(self, cutoff: float) -> list[Job]:
         """Delete jobs finished before ``cutoff``; return them so callers can unlink files."""
         with self._conn() as conn:

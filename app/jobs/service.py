@@ -24,6 +24,10 @@ class RateLimitError(Exception):
     """Raised when a source exceeds its per-window job quota."""
 
 
+class JobCancelled(Exception):
+    """Raised by a processor when a running job was cancelled cooperatively."""
+
+
 @dataclass
 class JobServiceConfig:
     workers: int = 1
@@ -47,6 +51,7 @@ class JobService:
         self._queue: asyncio.Queue[str] = asyncio.Queue()
         self._workers: list[asyncio.Task[None]] = []
         self._running = False
+        self._cancelled: set[str] = set()  # ids of running jobs asked to cancel
 
     async def start(self) -> None:
         """Recover interrupted jobs, re-enqueue queued ones, and spin up workers."""
@@ -97,6 +102,36 @@ class JobService:
         self._queue.put_nowait(job.id)
         return job
 
+    def is_cancelled(self, job_id: str) -> bool:
+        """Whether a running job has been asked to cancel (checked by processors)."""
+        return job_id in self._cancelled
+
+    def request_cancel(self, job_id: str) -> str | None:
+        """Remove a job. Returns ``"removed"``, ``"cancelling"``, or ``None`` if unknown.
+
+        Queued and terminal (done/failed) jobs are removed immediately (record +
+        files). A running job is flagged; the worker aborts a video at the next
+        frame or discards an image's result on completion, then removes it.
+        """
+        job = self.store.get(job_id)
+        if job is None:
+            return None
+        if job.status is JobStatus.RUNNING:
+            self._cancelled.add(job_id)
+            logger.info("cancel requested for running job {}", job_id)
+            return "cancelling"
+        self._remove_job(job)
+        logger.info("removed {} job {}", job.status, job_id)
+        return "removed"
+
+    def _remove_job(self, job: Job, result_path: str | None = None) -> None:
+        """Delete a job's record and its input/result files."""
+        for p in (job.input_path, job.result_path, result_path):
+            if p:
+                Path(p).unlink(missing_ok=True)
+        self.store.delete(job.id)
+        self._cancelled.discard(job.id)
+
     async def _worker(self, index: int) -> None:
         while self._running:
             try:
@@ -115,22 +150,35 @@ class JobService:
     async def _process(self, job_id: str) -> None:
         job = self.store.get(job_id)
         if job is None:
+            return  # removed while queued
+        if job_id in self._cancelled:
+            self._remove_job(job)
             return
         self.store.update(job_id, status=JobStatus.RUNNING, started_at=self._clock())
         try:
             result_path = await asyncio.to_thread(self.processor, job)
-            self.store.update(
-                job_id,
-                status=JobStatus.DONE,
-                result_path=result_path,
-                finished_at=self._clock(),
-            )
-            logger.info("job {} done -> {}", job_id, result_path)
+        except JobCancelled:
+            logger.info("job {} cancelled", job_id)
+            self._remove_job(self.store.get(job_id) or job)
+            return
         except Exception as e:  # noqa: BLE001 - surface as failed job, keep serving
             logger.exception("job {} failed", job_id)
             self.store.update(
                 job_id, status=JobStatus.FAILED, error=str(e), finished_at=self._clock()
             )
+            return
+        if job_id in self._cancelled:
+            # Cancelled while an uninterruptible image job was running: discard.
+            logger.info("job {} cancelled after completion; discarding result", job_id)
+            self._remove_job(self.store.get(job_id) or job, result_path=result_path)
+            return
+        self.store.update(
+            job_id,
+            status=JobStatus.DONE,
+            result_path=result_path,
+            finished_at=self._clock(),
+        )
+        logger.info("job {} done -> {}", job_id, result_path)
 
     def cleanup_expired(self) -> int:
         """Delete finished jobs older than the retention window plus their files."""

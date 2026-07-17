@@ -35,6 +35,10 @@ class VideoCapError(Exception):
     """Raised when a video exceeds configured caps."""
 
 
+class VideoCancelled(Exception):
+    """Raised mid-run when ``should_cancel()`` signals the job was cancelled."""
+
+
 def check_caps(info: media.VideoInfo, caps: VideoCaps) -> None:
     if info.duration > caps.max_seconds:
         raise VideoCapError(f"video too long: {info.duration:.1f}s > {caps.max_seconds}s")
@@ -65,6 +69,7 @@ class VideoColorizer:
         out_path: Path,
         workspace: Path,
         on_progress: Callable[[float], None] | None = None,
+        should_cancel: Callable[[], bool] | None = None,
     ) -> None:
         def report(f: float) -> None:
             if on_progress:
@@ -83,6 +88,8 @@ class VideoColorizer:
         logger.info("video: {} frames at {:.2f} fps", n, fps)
         rf = self.caps.render_factor if self.caps else 21
         for i, frame_path in enumerate(sorted(frames_dir.glob(FRAME_GLOB))):
+            if should_cancel and should_cancel():
+                raise VideoCancelled()
             with Image.open(frame_path) as im:
                 colored = self._colorizer.colorize(im.convert("RGB"), render_factor=rf)
             colored.save(frame_path)

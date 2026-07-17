@@ -31,7 +31,9 @@ def test_video_processor_reports_progress_and_cleans_workspace(tmp_path, monkeyp
         def __init__(self, *a, **k):
             pass
 
-        def colorize_video(self, in_path, out_path, workspace, on_progress=None):
+        def colorize_video(
+            self, in_path, out_path, workspace, on_progress=None, should_cancel=None
+        ):
             Path(workspace).mkdir(parents=True, exist_ok=True)
             (Path(workspace) / "marker").write_text("x")
             if on_progress:
