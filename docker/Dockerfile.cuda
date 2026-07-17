@@ -19,7 +19,7 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      python3.12 python3-pip libgl1 libglib2.0-0 curl \
+      python3.12 python3-pip libgl1 libglib2.0-0 curl ffmpeg \
     && ln -sf /usr/bin/python3.12 /usr/bin/python \
     && rm -rf /var/lib/apt/lists/*
 

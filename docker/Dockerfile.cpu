@@ -21,7 +21,7 @@ WORKDIR /app
 
 # OpenCV (headless) needs libGL + glib; curl for the healthcheck.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      libgl1 libglib2.0-0 curl \
+      libgl1 libglib2.0-0 curl ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Install CPU torch first from the CPU index so `pip install .` does not pull the
