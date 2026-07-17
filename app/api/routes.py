@@ -7,7 +7,7 @@ to the whole router via :func:`verify_token`.
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import ValidationError
 
 from app.jobs.models import JobStatus
@@ -104,6 +104,16 @@ def list_jobs(request: Request, limit: int = 50, offset: int = 0) -> list[JobOut
     service = request.app.state.service
     jobs = service.store.list_jobs(limit=min(limit, 200), offset=offset)
     return [JobOut.from_job(j, service.store.queue_position(j.id)) for j in jobs]
+
+
+@router.delete("/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_job(request: Request, job_id: str) -> Response:
+    """Cancel/remove a job: drop it from the queue, abort it, or dismiss its result."""
+    service = request.app.state.service
+    outcome = service.request_cancel(job_id)
+    if outcome is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="job not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/jobs/{job_id}/result")
