@@ -9,7 +9,14 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/Toaster";
 import { useTheme } from "@/hooks/useTheme";
 import { useJobPolling } from "@/hooks/useJobPolling";
-import { createJob, getHealth, type Health, type Job, type JobOptions } from "@/lib/api";
+import {
+  createJob,
+  getHealth,
+  listJobs,
+  type Health,
+  type Job,
+  type JobOptions,
+} from "@/lib/api";
 import { mediaNoun } from "@/lib/utils";
 import type { TrackedJob } from "@/types";
 
@@ -165,6 +172,39 @@ export default function App() {
   const activeIds = activeJobs.map((t) => t.jobId);
 
   useJobPolling(activeIds, onUpdate, onPollError);
+
+  // Rehydrate jobs from the backend on load so work in progress (and recent
+  // results) survives a page refresh. The local "before" preview is a blob that
+  // can't be recovered, so rehydrated cards render result-only.
+  useEffect(() => {
+    let alive = true;
+    listJobs()
+      .then((jobs) => {
+        if (!alive) return;
+        const rehydrated: TrackedJob[] = jobs.map((job) => ({
+          key: job.id,
+          name: job.name || (job.kind === "video" ? "video" : "photo"),
+          originalUrl: "",
+          jobId: job.id,
+          status: job.status,
+          kind: job.kind,
+          progress: job.progress,
+          queuePosition: job.queue_position,
+          error: job.error,
+          hasResult: job.has_result,
+        }));
+        // Keep any jobs already tracked in this session (they have a real
+        // "before" preview); append backend jobs not already shown.
+        setTracked((prev) => {
+          const seen = new Set(prev.map((t) => t.jobId));
+          return [...prev, ...rehydrated.filter((r) => !seen.has(r.jobId))];
+        });
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // Health: on mount and every 30s.
   useEffect(() => {

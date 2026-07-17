@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, Download, Film, Loader2 } from "lucide-react";
+import { AlertTriangle, Download, Film, ImageIcon, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { BeforeAfterSlider } from "@/components/BeforeAfterSlider";
@@ -93,9 +93,13 @@ export function JobCard({ job }: { job: TrackedJob }) {
 
       {active && (
         <div className="relative aspect-[4/3] w-full overflow-hidden">
-          {job.kind === "video" ? (
+          {job.kind === "video" || !job.originalUrl ? (
             <div className="grid h-full w-full place-items-center bg-muted">
-              <Film className="h-9 w-9 text-muted-foreground/60" />
+              {job.kind === "video" ? (
+                <Film className="h-9 w-9 text-muted-foreground/60" />
+              ) : (
+                <ImageIcon className="h-9 w-9 text-muted-foreground/60" />
+              )}
             </div>
           ) : (
             <img
@@ -152,10 +156,18 @@ export function JobCard({ job }: { job: TrackedJob }) {
           {resultUrl ? (
             job.kind === "video" ? (
               <VideoResult src={resultUrl} />
-            ) : (
+            ) : job.originalUrl ? (
               <BeforeAfterSlider
                 beforeUrl={job.originalUrl}
                 afterUrl={resultUrl}
+              />
+            ) : (
+              // Rehydrated after a refresh: the local "before" is gone, so show
+              // the restored result on its own.
+              <img
+                src={resultUrl}
+                alt={job.name}
+                className="w-full rounded-lg border border-border bg-muted object-contain"
               />
             )
           ) : resultError ? (
