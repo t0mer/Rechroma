@@ -258,7 +258,13 @@ def build_router(ctx: BotContext) -> Router:
 
         try:
             job = await process_and_wait(
-                ctx.service, options, input_path, chat_id, on_status=on_status, kind=kind
+                ctx.service,
+                options,
+                input_path,
+                chat_id,
+                on_status=on_status,
+                kind=kind,
+                name="video" if kind == "video" else "photo",
             )
         except RateLimitError as e:
             await bot.edit_message_text(

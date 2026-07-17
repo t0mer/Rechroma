@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     source_ref   TEXT,
     kind         TEXT NOT NULL DEFAULT 'image',
     progress     REAL NOT NULL DEFAULT 0,
+    name         TEXT NOT NULL DEFAULT '',
     result_path  TEXT,
     error        TEXT,
     created_at   REAL NOT NULL,
@@ -48,6 +49,8 @@ class JobStore:
                 conn.execute("ALTER TABLE jobs ADD COLUMN kind TEXT NOT NULL DEFAULT 'image'")
             if "progress" not in cols:
                 conn.execute("ALTER TABLE jobs ADD COLUMN progress REAL NOT NULL DEFAULT 0")
+            if "name" not in cols:
+                conn.execute("ALTER TABLE jobs ADD COLUMN name TEXT NOT NULL DEFAULT ''")
 
     @contextmanager
     def _conn(self) -> Iterator[sqlite3.Connection]:
@@ -72,6 +75,7 @@ class JobStore:
             source_ref=row["source_ref"],
             kind=row["kind"],
             progress=row["progress"],
+            name=row["name"],
             result_path=row["result_path"],
             error=row["error"],
             created_at=row["created_at"],
@@ -83,9 +87,9 @@ class JobStore:
         with self._conn() as conn:
             conn.execute(
                 """INSERT INTO jobs
-                   (id, status, options, input_path, source, source_ref, kind, progress,
+                   (id, status, options, input_path, source, source_ref, kind, progress, name,
                     result_path, error, created_at, started_at, finished_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     job.id,
                     job.status.value,
@@ -95,6 +99,7 @@ class JobStore:
                     job.source_ref,
                     job.kind,
                     job.progress,
+                    job.name,
                     job.result_path,
                     job.error,
                     job.created_at,

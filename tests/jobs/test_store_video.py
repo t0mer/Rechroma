@@ -6,15 +6,19 @@ from app.jobs.store import JobStore
 
 
 def _job(jid, kind="video"):
-    return Job(jid, JobStatus.QUEUED, PipelineOptions(), f"/i/{jid}", kind=kind, created_at=1.0)
+    return Job(
+        jid, JobStatus.QUEUED, PipelineOptions(), f"/i/{jid}",
+        kind=kind, name=f"{jid}.mp4", created_at=1.0,
+    )
 
 
-def test_kind_and_progress_persist(tmp_path):
+def test_kind_progress_and_name_persist(tmp_path):
     store = JobStore(tmp_path / "j.db")
     store.add(_job("v1"))
     got = store.get("v1")
     assert got.kind == "video"
     assert got.progress == 0.0
+    assert got.name == "v1.mp4"
     store.set_progress("v1", 0.5)
     assert store.get("v1").progress == 0.5
 
@@ -38,3 +42,4 @@ def test_migrates_old_schema(tmp_path):
     assert got is not None
     assert got.kind == "image"  # default
     assert got.progress == 0.0
+    assert got.name == ""  # default

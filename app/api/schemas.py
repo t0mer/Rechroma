@@ -33,6 +33,7 @@ class JobOut(BaseModel):
     id: str
     status: str
     kind: str = "image"
+    name: str = ""
     preset: str
     progress: float = 0.0
     queue_position: int | None = None
@@ -46,6 +47,7 @@ class JobOut(BaseModel):
             id=job.id,
             status=str(job.status),
             kind=job.kind,
+            name=job.name,
             preset=job.options.preset,
             progress=job.progress,
             queue_position=queue_position,
