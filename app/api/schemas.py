@@ -32,7 +32,9 @@ class JobOut(BaseModel):
 
     id: str
     status: str
+    kind: str = "image"
     preset: str
+    progress: float = 0.0
     queue_position: int | None = None
     error: str | None = None
     has_result: bool = False
@@ -43,7 +45,9 @@ class JobOut(BaseModel):
         return cls(
             id=job.id,
             status=str(job.status),
+            kind=job.kind,
             preset=job.options.preset,
+            progress=job.progress,
             queue_position=queue_position,
             error=job.error,
             has_result=job.result_path is not None,

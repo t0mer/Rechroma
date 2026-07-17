@@ -7,8 +7,12 @@ GPS EXIF from what we persist while keeping orientation.
 
 import io
 from pathlib import Path
+from typing import TYPE_CHECKING, Literal
 
 from PIL import Image, UnidentifiedImageError
+
+if TYPE_CHECKING:
+    from app.core.video import VideoCaps
 
 # Accept only these real types (validated by magic bytes, CLAUDE.md §6).
 _MAGIC: dict[str, bytes] = {
@@ -79,3 +83,52 @@ def _strip_gps(im: Image.Image) -> Image.Image:
 
     oriented = ImageOps.exif_transpose(im) or im  # bake orientation, then drop EXIF
     return oriented.convert("RGB")
+
+
+def sniff_media_type(data: bytes) -> Literal["image", "video"] | None:
+    """Classify an upload as image, video, or unsupported, by magic bytes."""
+    if sniff_image_type(data) is not None:
+        return "image"
+    # ISO-BMFF (mp4/mov/m4v): "ftyp" box at offset 4.
+    if len(data) >= 12 and data[4:8] == b"ftyp":
+        return "video"
+    # Matroska / WebM (EBML header).
+    if data[:4] == b"\x1a\x45\xdf\xa3":
+        return "video"
+    # AVI (RIFF ... "AVI ").
+    if data[:4] == b"RIFF" and data[8:12] == b"AVI ":
+        return "video"
+    return None
+
+
+def save_validated_video(
+    data: bytes, dest_dir: Path, job_id: str, max_bytes: int, caps: "VideoCaps"
+) -> Path:
+    """Validate a video upload (size + ffprobe caps) and persist it.
+
+    Raises :class:`UploadError` on size, type, or cap violations.
+    """
+    from app.core import media
+    from app.core.video import VideoCapError, check_caps
+
+    if len(data) > max_bytes:
+        raise UploadError(f"video too large ({len(data)} bytes > {max_bytes})")
+    if sniff_media_type(data) != "video":
+        raise UploadError("unsupported video type (allowed: mp4, mov, webm, mkv, avi)")
+
+    dest_dir = Path(dest_dir)
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    out = dest_dir / f"{job_id}_input.mp4"
+    out.write_bytes(data)
+
+    try:
+        info = media.probe(out)
+    except media.MediaError as e:
+        out.unlink(missing_ok=True)
+        raise UploadError(f"could not read video: {e}") from e
+    try:
+        check_caps(info, caps)
+    except VideoCapError as e:
+        out.unlink(missing_ok=True)
+        raise UploadError(str(e)) from e
+    return out
