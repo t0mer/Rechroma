@@ -11,7 +11,7 @@ from app.jobs.models import Job
 class JobOptionsIn(BaseModel):
     """Job options accepted from the client (mirrors ``PipelineOptions``)."""
 
-    preset: Literal["colorize", "restore", "full"] = "full"
+    preset: Literal["colorize", "restore", "full", "animate"] = "full"
     model: Literal["artistic", "stable"] = "artistic"
     render_factor: int | None = Field(default=None, ge=7, le=45)
     upscale: Literal[2, 4] | None = None

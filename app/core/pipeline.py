@@ -18,7 +18,7 @@ from typing import Literal, Protocol, runtime_checkable
 
 from PIL import Image
 
-Preset = Literal["colorize", "restore", "full"]
+Preset = Literal["colorize", "restore", "full", "animate"]
 ColorizerModel = Literal["artistic", "stable"]
 UpscaleFactor = Literal[2, 4]
 
