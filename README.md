@@ -49,6 +49,40 @@ and live progress:
 
 ![Activity indicator](assets/screenshots/activity-indicator.png)
 
+### Animate (living portrait)
+A standalone **Animate** mode brings a still portrait to life — a short animated
+clip. Pick **Animate** (it's off by default), choose an **engine**, upload a clear
+front-facing photo, and get an mp4 back:
+
+![Animate — progress](assets/screenshots/animate-progress.png)
+![Animate — result](assets/screenshots/animate-result.png)
+
+**Three selectable engines** (per job) — the UI only offers the ones your install
+can actually run:
+
+| Engine | What it does | Runs on | License / cost |
+|---|---|---|---|
+| `tpsmm` (default) | Reenacts a single detected face (motion transfer) | CPU or GPU | CC BY-SA 4.0 weights |
+| `diffusion` | Whole-scene generative motion (Wan2.1-I2V) | **GPU only** + `diffusion` extra | Apache-2.0 |
+| `cloud` | Hosted image-to-video via Replicate | Anywhere (calls out) | pay-per-use; **sends the photo to a third party** |
+
+> **Reality check:** `tpsmm` is lightweight but only animates one face — it is *not*
+> full-scene generative video. For "the whole photo comes alive" you need the
+> `diffusion` engine (a CUDA GPU, multi-GB model, minutes per clip) or the `cloud`
+> engine. **CPU is slow** for `tpsmm` and cannot run `diffusion` at all.
+
+Enable the optional engines in config:
+
+```yaml
+# Local diffusion (GPU only)
+animate_diffusion_enabled: true
+# Cloud (Replicate) — token via env only
+animate_cloud_enabled: true
+```
+```bash
+export REPLICATE_API_TOKEN=r8_...   # required for the cloud engine
+```
+
 ## Features
 
 - **Colorize** B&W / sepia photos — DeOldify *artistic* (vivid) and *stable*
@@ -65,6 +99,8 @@ and live progress:
   background with their status and live progress, so nothing is happening silently.
 - **Removable jobs:** a × on each card (and in the activity popover) cancels a
   queued or running job or dismisses a finished one — a video aborts between frames.
+- **Animate (living portrait):** a standalone, opt-in mode that turns a still
+  portrait into a short animated clip (TPSMM) — CPU or GPU.
 - **In-process async job queue** backed by SQLite (WAL) — no Redis/Postgres/Celery.
 - **Privacy first:** no telemetry, configurable retention, EXIF-GPS stripped from
   outputs, upload validation by magic bytes with decompression-bomb protection.
@@ -191,6 +227,14 @@ env var of the form `RECHROMA_<KEY>` (plus `TELEGRAM_BOT_TOKEN`). See
 | `TELEGRAM_BOT_TOKEN` | – | Enables the bot |
 | `RECHROMA_ALLOWED_CHAT_IDS` | `[]` | Bot allowlist (empty = admins only) |
 | `RECHROMA_ADMIN_CHAT_IDS` | `[]` | Always-allowed chats |
+| `RECHROMA_ANIMATE_ENABLED` | `true` | Enable the Animate feature |
+| `RECHROMA_ANIMATE_ENGINE` | `tpsmm` | Default engine: `tpsmm` \| `diffusion` \| `cloud` |
+| `RECHROMA_ANIMATE_MAX_FRAMES` | `120` | Cap on animated output frames (tpsmm) |
+| `RECHROMA_ANIMATE_DIFFUSION_ENABLED` | `false` | Enable the local diffusion engine (GPU only) |
+| `RECHROMA_ANIMATE_DIFFUSION_MODEL` | `Wan-AI/Wan2.1-I2V-1.3B-Diffusers` | diffusers image-to-video repo id |
+| `RECHROMA_ANIMATE_CLOUD_ENABLED` | `false` | Enable the cloud (Replicate) engine |
+| `RECHROMA_ANIMATE_CLOUD_MODEL` | `wan-video/wan-2.1-i2v-480p` | Replicate model slug |
+| `REPLICATE_API_TOKEN` | – | Replicate token (required for the cloud engine) |
 
 ## Model credits & licenses
 
@@ -207,13 +251,22 @@ checksums (see `app/core/model_registry.py`, the single source of truth). Use
 | `parsing_parsenet.pth` | Face parsing (facexlib ParseNet) | MIT |
 | `RealESRGAN_x4plus.pth` / `x2plus.pth` | 4× / 2× upscale | BSD-3-Clause |
 | `realesr-general-x4v3.pth` | Lightweight upscale (CPU default) | BSD-3-Clause |
+| `vox.pth.tar` (TPSMM) | Face animation — `tpsmm` engine | **CC BY-SA 4.0** |
+| Wan2.1-I2V (diffusers) | Generative animation — `diffusion` engine (downloaded by diffusers) | Apache-2.0 |
 
 Architectures are vendored (inference-only) under `app/core/archs/` with upstream
 attribution — [DeOldify](https://github.com/jantic/DeOldify) (MIT),
 [GFPGAN](https://github.com/TencentARC/GFPGAN) (Apache-2.0),
 [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) (BSD-3),
-[facexlib](https://github.com/xinntao/facexlib) (MIT). DDColor backends are
-registered for a future release but not yet wired.
+[facexlib](https://github.com/xinntao/facexlib) (MIT),
+[TPSMM](https://github.com/yoyo-nb/Thin-Plate-Spline-Motion-Model) (MIT). DDColor
+backends are registered for a future release but not yet wired.
+
+> **Animation licensing:** the TPSMM *code* is MIT, but its pretrained `vox`
+> weights (and the bundled driving clip in `assets/drivers/`) are VoxCeleb-based
+> and licensed **CC BY-SA 4.0** — commercial use is permitted with attribution
+> and share-alike. This is the one weight in Rechroma outside the MIT/Apache/BSD
+> set; the Animate feature is opt-in.
 
 ## Development
 

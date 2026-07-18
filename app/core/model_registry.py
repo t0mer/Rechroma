@@ -107,6 +107,17 @@ REGISTRY: dict[str, ModelEntry] = {
         license="BSD-3-Clause",
         role="Lightweight upscale (CPU default)",
     ),
+    # --- Animation (living portrait) ---
+    # TPSMM code is MIT; these VoxCeleb-trained weights are CC BY-SA 4.0
+    # (commercial use OK with attribution + share-alike).
+    "tpsmm": ModelEntry(
+        filename="vox.pth.tar",
+        sha256="52ad8c848e2a1d91b621de96fea83faf57ce3b8c1c06424e317f4df1d3998204",
+        size_bytes=350993469,
+        url="https://huggingface.co/spaces/AlekseyKorshuk/thin-plate-spline-motion-model/resolve/main/checkpoints/vox.pth.tar",
+        license="CC-BY-SA-4.0",
+        role="TPSMM face animation (living portrait)",
+    ),
 }
 
 

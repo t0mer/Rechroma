@@ -9,14 +9,14 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import field_validator, model_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ENV_PREFIX = "RECHROMA_"
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix=ENV_PREFIX, extra="ignore")
+    model_config = SettingsConfigDict(env_prefix=ENV_PREFIX, extra="ignore", populate_by_name=True)
 
     device: Literal["auto", "cuda", "cpu"] = "auto"
     models_dir: Path = Path("/data/models")
@@ -51,6 +51,32 @@ class Settings(BaseSettings):
     video_crf: int = 18
     video_workspace_dir: Path | None = None  # defaults to ${data_dir}/video
 
+    # Animate (living portrait) — standalone, pluggable engines
+    animate_enabled: bool = True
+    animate_engine: Literal["tpsmm", "diffusion", "cloud"] = "tpsmm"  # default engine
+    animate_driver: str = "subtle"
+    animate_max_frames: int = 120
+    animate_max_resolution: int = 2048
+    animate_crf: int = 18
+    animate_workspace_dir: Path | None = None  # defaults to ${data_dir}/animate
+
+    # Animate: local diffusion engine (GPU only, opt-in) — Wan2.1-I2V by default
+    animate_diffusion_enabled: bool = False
+    animate_diffusion_model: str = "Wan-AI/Wan2.1-I2V-1.3B-Diffusers"
+    animate_diffusion_prompt: str = ""  # optional guidance; blank lets the model decide
+    animate_diffusion_frames: int = 49
+    animate_diffusion_steps: int = 30
+    animate_diffusion_fps: int = 16
+
+    # Animate: cloud engine (opt-in) — Replicate; token via env only
+    animate_cloud_enabled: bool = False
+    animate_cloud_model: str = "wan-video/wan-2.1-i2v-480p"  # a Replicate owner/name slug
+    animate_cloud_prompt: str = ""
+    replicate_api_token: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("REPLICATE_API_TOKEN", "RECHROMA_REPLICATE_API_TOKEN"),
+    )
+
     @field_validator("allowed_chat_ids", "admin_chat_ids", mode="before")
     @classmethod
     def _split_ids(cls, v: Any) -> Any:
@@ -60,9 +86,11 @@ class Settings(BaseSettings):
         return v
 
     @model_validator(mode="after")
-    def _default_video_workspace(self) -> "Settings":
+    def _default_workspaces(self) -> "Settings":
         if self.video_workspace_dir is None:
             self.video_workspace_dir = self.data_dir / "video"
+        if self.animate_workspace_dir is None:
+            self.animate_workspace_dir = self.data_dir / "animate"
         return self
 
 

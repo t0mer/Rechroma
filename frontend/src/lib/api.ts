@@ -6,10 +6,21 @@
  */
 
 export type JobStatus = "queued" | "running" | "done" | "failed";
-export type Preset = "colorize" | "restore" | "full";
+export type Preset = "colorize" | "restore" | "full" | "animate";
 export type ColorizerModel = "artistic" | "stable";
+export type AnimateEngine = "tpsmm" | "diffusion" | "cloud";
 
-export type JobKind = "image" | "video";
+export type JobKind = "image" | "video" | "animate";
+
+export interface EngineInfo {
+  name: AnimateEngine;
+  label: string;
+  requires_gpu: boolean;
+  requires_key: boolean;
+  available: boolean;
+  reason: string;
+  notes: string;
+}
 
 export interface Job {
   id: string;
@@ -37,6 +48,7 @@ export interface JobOptions {
   renderFactor?: number;
   upscale?: 2 | 4;
   restoreFaces: boolean;
+  engine?: AnimateEngine;
 }
 
 const TOKEN_KEY = "rechroma-token";
@@ -87,6 +99,9 @@ export async function createJob(file: File, options: JobOptions): Promise<Job> {
     form.append("upscale", String(options.upscale));
   }
   form.append("restore_faces", options.restoreFaces ? "true" : "false");
+  if (options.engine) {
+    form.append("engine", options.engine);
+  }
 
   const res = await fetch("/api/v1/jobs", {
     method: "POST",
@@ -139,4 +154,11 @@ export async function getHealth(): Promise<Health> {
   const res = await fetch("/healthz", { headers: authHeaders() });
   if (!res.ok) throw new Error(await extractError(res));
   return (await res.json()) as Health;
+}
+
+/** List the animate engines and whether each is usable on this install. */
+export async function listEngines(): Promise<EngineInfo[]> {
+  const res = await fetch("/api/v1/animate/engines", { headers: authHeaders() });
+  if (!res.ok) throw new Error(await extractError(res));
+  return (await res.json()) as EngineInfo[];
 }

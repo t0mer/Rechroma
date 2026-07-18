@@ -37,3 +37,31 @@ video_smoothing_window: 5    # temporal chroma window; 1 disables
 video_render_factor: 21      # modest default for speed across many frames
 video_crf: 18                # x264 quality (lower = better/larger)
 video_workspace_dir:         # blank = ${data_dir}/video
+
+# --- Animate (living portrait) ---
+# Standalone animation: a still portrait -> short animated mp4. Three selectable
+# engines (per job): tpsmm (default), diffusion (GPU only), cloud (Replicate).
+# Off by default (the user selects Animate); CPU works but is slow, GPU recommended.
+animate_enabled: true
+animate_engine: tpsmm        # default engine: tpsmm | diffusion | cloud
+animate_driver: subtle       # (tpsmm) bundled driving-motion clip
+animate_max_frames: 120      # (tpsmm) cap on output frames
+animate_max_resolution: 2048 # reject source images whose longer side exceeds this
+animate_crf: 18              # output x264 quality
+animate_workspace_dir:       # blank = ${data_dir}/animate
+
+# Local diffusion engine (GPU only, opt-in): whole-scene generative motion.
+# Requires a CUDA GPU and the optional 'diffusion' deps (diffusers); multi-GB.
+animate_diffusion_enabled: false
+animate_diffusion_model: Wan-AI/Wan2.1-I2V-1.3B-Diffusers  # any diffusers I2V repo id
+animate_diffusion_prompt:    # optional guidance; blank lets the model decide
+animate_diffusion_frames: 49
+animate_diffusion_steps: 30
+animate_diffusion_fps: 16
+
+# Cloud engine (opt-in): hosted image-to-video via Replicate. Sends the photo to
+# a third party. The token is read from the environment only (never config/logs):
+#   export REPLICATE_API_TOKEN=r8_...
+animate_cloud_enabled: false
+animate_cloud_model: wan-video/wan-2.1-i2v-480p  # a Replicate owner/name slug
+animate_cloud_prompt:        # optional guidance passed to the model

@@ -13,7 +13,7 @@ from pydantic import ValidationError
 from app.jobs.models import JobStatus
 from app.jobs.service import RateLimitError
 
-from .schemas import JobOptionsIn, JobOut
+from .schemas import EngineOut, JobOptionsIn, JobOut
 from .security import verify_token
 
 router = APIRouter(prefix="/api/v1", dependencies=[Depends(verify_token)])
@@ -28,7 +28,10 @@ async def create_job(
     render_factor: int | None = Form(None),
     upscale: int | None = Form(None),
     restore_faces: bool = Form(True),
+    engine: str | None = Form(None),
 ) -> JobOut:
+    from app.core.engines import EngineUnavailable, build_engine
+
     from .uploads import UploadError, save_validated_upload, save_validated_video, sniff_media_type
 
     settings = request.app.state.settings
@@ -41,15 +44,36 @@ async def create_job(
             render_factor=render_factor,
             upscale=upscale,  # type: ignore[arg-type]
             restore_faces=restore_faces,
+            engine=engine,  # type: ignore[arg-type]
         )
     except ValidationError as e:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.errors()) from e
 
     data = await file.read()
-    kind = sniff_media_type(data)
+    media_kind = sniff_media_type(data)
+    animate = options.preset == "animate"
+    kind = "animate" if animate else media_kind
     job_uuid = uuid4().hex
     try:
-        if kind == "video":
+        if animate:
+            if not settings.animate_enabled:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="animation disabled")
+            if media_kind != "image":
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST, detail="Animate needs a still image"
+                )
+            try:
+                # Validate the requested engine is actually usable before queueing.
+                build_engine(options.engine or settings.animate_engine, settings)
+            except EngineUnavailable as e:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+            path = save_validated_upload(
+                data,
+                settings.data_dir / "inputs",
+                job_uuid,
+                settings.max_upload_mb * 1024 * 1024,
+            )
+        elif media_kind == "video":
             if not settings.video_enabled:
                 raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="video processing disabled")
             from app.main import video_caps_from_settings
@@ -61,7 +85,7 @@ async def create_job(
                 settings.video_max_mb * 1024 * 1024,
                 caps=video_caps_from_settings(settings),
             )
-        elif kind == "image":
+        elif media_kind == "image":
             path = save_validated_upload(
                 data,
                 settings.data_dir / "inputs",
@@ -116,6 +140,15 @@ def delete_job(request: Request, job_id: str) -> Response:
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.get("/animate/engines", response_model=list[EngineOut])
+def list_animate_engines(request: Request) -> list[EngineOut]:
+    """Report the animate engines and whether each is usable on this install."""
+    from app.core.engines import list_engine_infos
+
+    settings = request.app.state.settings
+    return [EngineOut.from_info(i) for i in list_engine_infos(settings)]
+
+
 @router.get("/jobs/{job_id}/result")
 def get_result(request: Request, job_id: str) -> FileResponse:
     service = request.app.state.service
@@ -124,6 +157,6 @@ def get_result(request: Request, job_id: str) -> FileResponse:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="job not found")
     if job.status is not JobStatus.DONE or not job.result_path:
         raise HTTPException(status.HTTP_409_CONFLICT, detail=f"job is {job.status}, no result yet")
-    if job.kind == "video":
+    if job.kind in ("video", "animate"):
         return FileResponse(job.result_path, media_type="video/mp4", filename=f"{job_id}.mp4")
     return FileResponse(job.result_path, media_type="image/png", filename=f"{job_id}.png")

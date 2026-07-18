@@ -31,6 +31,7 @@ function toApiOptions(o: Options): JobOptions {
     renderFactor: o.autoRenderFactor ? undefined : o.renderFactor,
     upscale: o.upscale === "off" ? undefined : (Number(o.upscale) as 2 | 4),
     restoreFaces: o.restoreFaces,
+    engine: o.preset === "animate" ? o.engine : undefined,
   };
 }
 
@@ -309,11 +310,13 @@ export default function App() {
               {submitting
                 ? "Sending…"
                 : pending.length > 0
-                  ? `Restore ${pending.length} ${mediaNoun(
+                  ? `${options.preset === "animate" ? "Animate" : "Restore"} ${pending.length} ${mediaNoun(
                       pending.map((p) => p.file),
                       pending.length,
                     )}`
-                  : "Restore photos"}
+                  : options.preset === "animate"
+                    ? "Animate photos"
+                    : "Restore photos"}
             </Button>
           </div>
 

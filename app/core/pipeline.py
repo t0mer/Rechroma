@@ -18,7 +18,7 @@ from typing import Literal, Protocol, runtime_checkable
 
 from PIL import Image
 
-Preset = Literal["colorize", "restore", "full"]
+Preset = Literal["colorize", "restore", "full", "animate"]
 ColorizerModel = Literal["artistic", "stable"]
 UpscaleFactor = Literal[2, 4]
 
@@ -39,6 +39,7 @@ class PipelineOptions:
     render_factor: int | None = None  # None -> device default
     upscale: UpscaleFactor | None = None
     restore_faces: bool = True
+    animate_engine: str | None = None  # animate backend; None -> configured default
 
 
 def _plan(options: PipelineOptions) -> list[str]:

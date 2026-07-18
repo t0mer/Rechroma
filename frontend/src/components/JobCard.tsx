@@ -136,7 +136,9 @@ export function JobCard({
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   {job.kind === "video"
                     ? `Colorizing video… ${Math.round(job.progress * 100)}%`
-                    : "Restoring…"}
+                    : job.kind === "animate"
+                      ? `Animating… ${Math.round(job.progress * 100)}%`
+                      : "Restoring…"}
                 </>
               ) : (
                 <>
@@ -147,7 +149,7 @@ export function JobCard({
                 </>
               )}
             </div>
-            {job.status === "running" && job.kind === "video" && (
+            {job.status === "running" && (job.kind === "video" || job.kind === "animate") && (
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/25">
                 <div
                   className="h-full rounded-full bg-primary transition-[width] duration-500"
@@ -171,7 +173,7 @@ export function JobCard({
       {job.status === "done" && (
         <div className="space-y-3 px-4 pb-4">
           {resultUrl ? (
-            job.kind === "video" ? (
+            job.kind === "video" || job.kind === "animate" ? (
               <VideoResult src={resultUrl} />
             ) : job.originalUrl ? (
               <BeforeAfterSlider
@@ -201,7 +203,7 @@ export function JobCard({
           {resultUrl && (
             <a
               href={resultUrl}
-              download={`${baseName(job.name)}-rechroma.${job.kind === "video" ? "mp4" : "png"}`}
+              download={`${baseName(job.name)}-rechroma.${job.kind === "video" || job.kind === "animate" ? "mp4" : "png"}`}
               className="block"
             >
               <Button variant="outline" size="md" className="w-full">

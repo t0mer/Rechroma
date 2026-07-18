@@ -21,6 +21,7 @@ from .config import Settings, load_settings
 from .core.device import resolve_device
 from .core.video import VideoCaps
 from .jobs.processor import (
+    make_animate_processor,
     make_dispatch_processor,
     make_pipeline_processor,
     make_video_processor,
@@ -68,7 +69,14 @@ def create_app(settings: Settings | None = None, processor: Processor | None = N
             # `service` is bound just below; the lambda is only called at run time.
             is_cancelled=lambda jid: service.is_cancelled(jid),
         )
-        proc = make_dispatch_processor(image_proc, video_proc)
+        animate_proc = make_animate_processor(
+            settings.data_dir / "results",
+            settings.animate_workspace_dir or (settings.data_dir / "animate"),
+            settings,
+            report=store.set_progress,
+            is_cancelled=lambda jid: service.is_cancelled(jid),
+        )
+        proc = make_dispatch_processor(image_proc, video_proc, animate_proc)
     service = JobService(
         store,
         proc,
