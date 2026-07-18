@@ -10,6 +10,7 @@ Attribution: architecture after "Deep Residual Learning for Image Recognition"
 (He et al., 2015); layout mirrors torchvision.models.resnet (BSD-3-Clause).
 """
 
+import torch
 from torch import nn
 
 
@@ -107,6 +108,23 @@ class ResNet(nn.Module):
         for _ in range(1, blocks):
             layers.append(block(self.inplanes, planes))
         return nn.Sequential(*layers)
+
+    def forward(self, x):  # type: ignore[no-untyped-def]
+        # Standard torchvision ResNet forward (classification head). Consumers that
+        # only want features slice the child modules instead of calling this.
+        x = self.relu(self.bn1(self.conv1(x)))
+        x = self.maxpool(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        return self.fc(x)
+
+
+def resnet18() -> ResNet:
+    return ResNet(BasicBlock, [2, 2, 2, 2])
 
 
 def resnet34() -> ResNet:
