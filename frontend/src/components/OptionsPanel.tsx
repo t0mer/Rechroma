@@ -69,6 +69,7 @@ export function OptionsPanel({ options, onChange }: OptionsPanelProps) {
             { value: "colorize", label: "Colorize" },
             { value: "restore", label: "Restore" },
             { value: "full", label: "Full" },
+            { value: "animate", label: "Animate" },
           ]}
         />
         <p className="text-xs text-muted-foreground">
@@ -78,9 +79,14 @@ export function OptionsPanel({ options, onChange }: OptionsPanelProps) {
             "Repair faces, denoise and sharpen an already-colour photo."}
           {options.preset === "full" &&
             "Restore, then colourise — the full revival."}
+          {options.preset === "animate" &&
+            "Bring the face to life — a short animated clip from a still portrait. " +
+              "Best on a clear, front-facing photo; slow on CPU."}
         </p>
       </Field>
 
+      {options.preset === "animate" ? null : (
+      <>
       <div className="h-px bg-border" />
 
       <Field
@@ -172,6 +178,8 @@ export function OptionsPanel({ options, onChange }: OptionsPanelProps) {
           label="Restore faces"
         />
       </div>
+      </>
+      )}
     </div>
   );
 }

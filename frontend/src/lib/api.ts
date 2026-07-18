@@ -6,10 +6,10 @@
  */
 
 export type JobStatus = "queued" | "running" | "done" | "failed";
-export type Preset = "colorize" | "restore" | "full";
+export type Preset = "colorize" | "restore" | "full" | "animate";
 export type ColorizerModel = "artistic" | "stable";
 
-export type JobKind = "image" | "video";
+export type JobKind = "image" | "video" | "animate";
 
 export interface Job {
   id: string;
