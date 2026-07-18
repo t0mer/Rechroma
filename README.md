@@ -49,6 +49,17 @@ and live progress:
 
 ![Activity indicator](assets/screenshots/activity-indicator.png)
 
+### Animate (living portrait)
+A standalone **Animate** mode brings a still portrait to life — a short animated
+clip where the face moves. Pick **Animate** (it's off by default), upload a clear
+front-facing photo, and get an mp4 back:
+
+![Animate — progress](assets/screenshots/animate-progress.png)
+![Animate — result](assets/screenshots/animate-result.png)
+
+> Powered by the Thin-Plate-Spline Motion Model. **CPU is slow** (seconds per
+> frame) — a GPU is strongly recommended. See the licensing note below.
+
 ## Features
 
 - **Colorize** B&W / sepia photos — DeOldify *artistic* (vivid) and *stable*
@@ -65,6 +76,8 @@ and live progress:
   background with their status and live progress, so nothing is happening silently.
 - **Removable jobs:** a × on each card (and in the activity popover) cancels a
   queued or running job or dismisses a finished one — a video aborts between frames.
+- **Animate (living portrait):** a standalone, opt-in mode that turns a still
+  portrait into a short animated clip (TPSMM) — CPU or GPU.
 - **In-process async job queue** backed by SQLite (WAL) — no Redis/Postgres/Celery.
 - **Privacy first:** no telemetry, configurable retention, EXIF-GPS stripped from
   outputs, upload validation by magic bytes with decompression-bomb protection.
@@ -191,6 +204,8 @@ env var of the form `RECHROMA_<KEY>` (plus `TELEGRAM_BOT_TOKEN`). See
 | `TELEGRAM_BOT_TOKEN` | – | Enables the bot |
 | `RECHROMA_ALLOWED_CHAT_IDS` | `[]` | Bot allowlist (empty = admins only) |
 | `RECHROMA_ADMIN_CHAT_IDS` | `[]` | Always-allowed chats |
+| `RECHROMA_ANIMATE_ENABLED` | `true` | Enable the Animate feature |
+| `RECHROMA_ANIMATE_MAX_FRAMES` | `120` | Cap on animated output frames |
 
 ## Model credits & licenses
 
@@ -207,13 +222,21 @@ checksums (see `app/core/model_registry.py`, the single source of truth). Use
 | `parsing_parsenet.pth` | Face parsing (facexlib ParseNet) | MIT |
 | `RealESRGAN_x4plus.pth` / `x2plus.pth` | 4× / 2× upscale | BSD-3-Clause |
 | `realesr-general-x4v3.pth` | Lightweight upscale (CPU default) | BSD-3-Clause |
+| `vox.pth.tar` (TPSMM) | Face animation (living portrait) | **CC BY-SA 4.0** |
 
 Architectures are vendored (inference-only) under `app/core/archs/` with upstream
 attribution — [DeOldify](https://github.com/jantic/DeOldify) (MIT),
 [GFPGAN](https://github.com/TencentARC/GFPGAN) (Apache-2.0),
 [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) (BSD-3),
-[facexlib](https://github.com/xinntao/facexlib) (MIT). DDColor backends are
-registered for a future release but not yet wired.
+[facexlib](https://github.com/xinntao/facexlib) (MIT),
+[TPSMM](https://github.com/yoyo-nb/Thin-Plate-Spline-Motion-Model) (MIT). DDColor
+backends are registered for a future release but not yet wired.
+
+> **Animation licensing:** the TPSMM *code* is MIT, but its pretrained `vox`
+> weights (and the bundled driving clip in `assets/drivers/`) are VoxCeleb-based
+> and licensed **CC BY-SA 4.0** — commercial use is permitted with attribution
+> and share-alike. This is the one weight in Rechroma outside the MIT/Apache/BSD
+> set; the Animate feature is opt-in.
 
 ## Development
 

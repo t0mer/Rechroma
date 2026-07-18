@@ -309,11 +309,13 @@ export default function App() {
               {submitting
                 ? "Sending…"
                 : pending.length > 0
-                  ? `Restore ${pending.length} ${mediaNoun(
+                  ? `${options.preset === "animate" ? "Animate" : "Restore"} ${pending.length} ${mediaNoun(
                       pending.map((p) => p.file),
                       pending.length,
                     )}`
-                  : "Restore photos"}
+                  : options.preset === "animate"
+                    ? "Animate photos"
+                    : "Restore photos"}
             </Button>
           </div>
 
