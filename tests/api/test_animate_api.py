@@ -61,3 +61,34 @@ def test_animate_creates_animate_job(tmp_path):
         res = client.get(f"/api/v1/jobs/{jid}/result")
         assert res.status_code == 200
         assert res.headers["content-type"] == "video/mp4"
+
+
+def test_list_engines(tmp_path):
+    with _client(tmp_path) as client:
+        r = client.get("/api/v1/animate/engines")
+        assert r.status_code == 200, r.text
+        engines = {e["name"]: e for e in r.json()}
+        assert set(engines) == {"tpsmm", "diffusion", "cloud"}
+        assert engines["tpsmm"]["available"] is True
+        assert engines["cloud"]["available"] is False
+        assert engines["cloud"]["requires_key"] is True
+
+
+def test_animate_rejects_unavailable_engine(tmp_path):
+    with _client(tmp_path) as client:
+        r = client.post(
+            "/api/v1/jobs",
+            files={"file": ("p.png", _png(), "image/png")},
+            data={"preset": "animate", "engine": "cloud"},
+        )
+        assert r.status_code == 400, r.text
+
+
+def test_animate_accepts_available_engine(tmp_path):
+    with _client(tmp_path) as client:
+        r = client.post(
+            "/api/v1/jobs",
+            files={"file": ("p.png", _png(), "image/png")},
+            data={"preset": "animate", "engine": "tpsmm"},
+        )
+        assert r.status_code == 201, r.text

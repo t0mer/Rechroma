@@ -13,7 +13,7 @@ from pydantic import ValidationError
 from app.jobs.models import JobStatus
 from app.jobs.service import RateLimitError
 
-from .schemas import JobOptionsIn, JobOut
+from .schemas import EngineOut, JobOptionsIn, JobOut
 from .security import verify_token
 
 router = APIRouter(prefix="/api/v1", dependencies=[Depends(verify_token)])
@@ -28,7 +28,10 @@ async def create_job(
     render_factor: int | None = Form(None),
     upscale: int | None = Form(None),
     restore_faces: bool = Form(True),
+    engine: str | None = Form(None),
 ) -> JobOut:
+    from app.core.engines import EngineUnavailable, build_engine
+
     from .uploads import UploadError, save_validated_upload, save_validated_video, sniff_media_type
 
     settings = request.app.state.settings
@@ -41,6 +44,7 @@ async def create_job(
             render_factor=render_factor,
             upscale=upscale,  # type: ignore[arg-type]
             restore_faces=restore_faces,
+            engine=engine,  # type: ignore[arg-type]
         )
     except ValidationError as e:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.errors()) from e
@@ -58,6 +62,11 @@ async def create_job(
                 raise HTTPException(
                     status.HTTP_400_BAD_REQUEST, detail="Animate needs a still image"
                 )
+            try:
+                # Validate the requested engine is actually usable before queueing.
+                build_engine(options.engine or settings.animate_engine, settings)
+            except EngineUnavailable as e:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
             path = save_validated_upload(
                 data,
                 settings.data_dir / "inputs",
@@ -129,6 +138,15 @@ def delete_job(request: Request, job_id: str) -> Response:
     if outcome is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="job not found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/animate/engines", response_model=list[EngineOut])
+def list_animate_engines(request: Request) -> list[EngineOut]:
+    """Report the animate engines and whether each is usable on this install."""
+    from app.core.engines import list_engine_infos
+
+    settings = request.app.state.settings
+    return [EngineOut.from_info(i) for i in list_engine_infos(settings)]
 
 
 @router.get("/jobs/{job_id}/result")

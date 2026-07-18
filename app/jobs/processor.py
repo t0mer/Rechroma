@@ -10,7 +10,8 @@ from pathlib import Path
 
 from PIL import Image
 
-from app.core.animate import AnimateCancelled, FaceAnimator
+from app.config import Settings
+from app.core.engines import AnimateCancelled, build_engine, resolve_engine_name
 from app.core.pipeline import build_steps, run_pipeline
 from app.core.video import VideoCancelled, VideoCaps, VideoColorizer
 
@@ -98,36 +99,27 @@ def _load_animate_source(input_path: str) -> Image.Image:
 def make_animate_processor(
     output_dir: Path,
     workspace_dir: Path,
-    driver_path: Path,
+    settings: Settings,
     report: Callable[[str, float], None],
-    device: str = "auto",
-    models_dir: Path = Path("/data/models"),
-    base_url: str | None = None,
-    max_frames: int = 120,
-    crf: int = 18,
     is_cancelled: Callable[[str], bool] = _never_cancel,
 ) -> Processor:
     """Build a ``Processor`` that animates a portrait into an mp4 (living portrait).
 
-    The per-job workspace is always removed in a ``finally``; ``report`` writes
-    progress and ``is_cancelled`` lets the frame loop abort a cancelled job.
+    The engine (tpsmm / diffusion / cloud) is selected per job from the job's
+    options, falling back to the configured default. The per-job workspace is
+    always removed in a ``finally``; ``report`` writes progress and
+    ``is_cancelled`` lets a running job abort.
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     def process(job: Job) -> str:
-        animator = FaceAnimator(
-            device=device,
-            models_dir=models_dir,
-            base_url=base_url,
-            driver_path=driver_path,
-            max_frames=max_frames,
-            crf=crf,
-        )
+        engine_name = resolve_engine_name(job.options.animate_engine, settings)
+        engine = build_engine(engine_name, settings)
         ws = Path(workspace_dir) / job.id
         out_path = output_dir / f"{job.id}_result.mp4"
         try:
-            animator.animate(
+            engine.animate(
                 _load_animate_source(job.input_path),
                 out_path,
                 ws,

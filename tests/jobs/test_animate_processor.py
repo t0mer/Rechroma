@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from app.config import Settings
 from app.core.pipeline import PipelineOptions
 from app.jobs import processor as pm
 from app.jobs.models import Job, JobStatus
@@ -21,9 +22,8 @@ def test_dispatch_routes_animate():
 def test_animate_processor_reports_and_cleans(tmp_path, monkeypatch):
     reported = []
 
-    class FakeAnimator:
-        def __init__(self, *a, **k):
-            pass
+    class FakeEngine:
+        name = "fake"
 
         def animate(self, image, out_path, workspace, on_progress=None, should_cancel=None):
             Path(workspace).mkdir(parents=True, exist_ok=True)
@@ -33,14 +33,16 @@ def test_animate_processor_reports_and_cleans(tmp_path, monkeypatch):
                 on_progress(1.0)
             Path(out_path).write_bytes(b"\x00")
 
-    monkeypatch.setattr(pm, "FaceAnimator", FakeAnimator)
+    # The processor resolves + builds an engine from settings; stub both.
+    monkeypatch.setattr(pm, "resolve_engine_name", lambda requested, settings: "fake")
+    monkeypatch.setattr(pm, "build_engine", lambda name, settings: FakeEngine())
     monkeypatch.setattr(pm, "_load_animate_source", lambda p: object())
+    settings = Settings(data_dir=tmp_path, device="cpu", models_dir=tmp_path)
     proc = pm.make_animate_processor(
         tmp_path / "out",
         tmp_path / "ws",
-        driver_path=tmp_path / "drv.mp4",
+        settings,
         report=lambda jid, f: reported.append((jid, f)),
-        device="cpu",
     )
     out = proc(
         Job("n", JobStatus.QUEUED, PipelineOptions(), str(tmp_path / "in.png"), kind="animate")
