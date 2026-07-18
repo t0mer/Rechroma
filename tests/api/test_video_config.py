@@ -12,6 +12,13 @@ def test_video_defaults():
     assert s.video_workspace_dir == Path("/tmp/x/video")
 
 
+def test_animate_defaults():
+    s = Settings(data_dir=Path("/tmp/x"))
+    assert s.animate_enabled is True
+    assert s.animate_driver == "subtle"
+    assert s.animate_workspace_dir == Path("/tmp/x/animate")
+
+
 def test_caps_from_settings():
     s = Settings(data_dir=Path("/tmp/x"), video_max_seconds=10)
     caps = video_caps_from_settings(s)

@@ -9,7 +9,7 @@ from typing import Literal
 
 from app.core.pipeline import PipelineOptions
 
-JobKind = Literal["image", "video"]
+JobKind = Literal["image", "video", "animate"]
 
 
 class JobStatus(StrEnum):

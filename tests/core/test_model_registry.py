@@ -20,12 +20,19 @@ def test_entries_are_wellformed():
     seen = set()
     for name, e in REGISTRY.items():
         assert isinstance(e, ModelEntry)
-        assert e.filename.endswith(".pth")
+        assert e.filename.endswith((".pth", ".pth.tar"))
         assert e.filename not in seen, f"duplicate filename {e.filename}"
         seen.add(e.filename)
         assert HEX64.match(e.sha256) or e.sha256 == "", f"{name} bad sha"
         assert e.url.startswith("https://")
         assert e.size_bytes > 0
+
+
+def test_tpsmm_pinned():
+    e = get_entry("tpsmm")
+    assert e.sha256 == "52ad8c848e2a1d91b621de96fea83faf57ce3b8c1c06424e317f4df1d3998204"
+    assert e.license == "CC-BY-SA-4.0"
+    assert e.filename == "vox.pth.tar"
 
 
 def test_get_entry_unknown_lists_names():

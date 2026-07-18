@@ -37,3 +37,13 @@ video_smoothing_window: 5    # temporal chroma window; 1 disables
 video_render_factor: 21      # modest default for speed across many frames
 video_crf: 18                # x264 quality (lower = better/larger)
 video_workspace_dir:         # blank = ${data_dir}/video
+
+# --- Animate (living portrait) ---
+# Standalone TPSMM face animation: a still portrait -> short animated mp4.
+# Off by default (the user selects Animate); CPU works but is slow, GPU recommended.
+animate_enabled: true
+animate_driver: subtle       # bundled driving-motion clip
+animate_max_frames: 120      # cap on output frames
+animate_max_resolution: 2048 # reject source images whose longer side exceeds this
+animate_crf: 18              # output x264 quality
+animate_workspace_dir:       # blank = ${data_dir}/animate

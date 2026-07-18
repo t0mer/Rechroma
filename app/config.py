@@ -51,6 +51,14 @@ class Settings(BaseSettings):
     video_crf: int = 18
     video_workspace_dir: Path | None = None  # defaults to ${data_dir}/video
 
+    # Animate (living portrait) — standalone TPSMM face animation
+    animate_enabled: bool = True
+    animate_driver: str = "subtle"
+    animate_max_frames: int = 120
+    animate_max_resolution: int = 2048
+    animate_crf: int = 18
+    animate_workspace_dir: Path | None = None  # defaults to ${data_dir}/animate
+
     @field_validator("allowed_chat_ids", "admin_chat_ids", mode="before")
     @classmethod
     def _split_ids(cls, v: Any) -> Any:
@@ -60,9 +68,11 @@ class Settings(BaseSettings):
         return v
 
     @model_validator(mode="after")
-    def _default_video_workspace(self) -> "Settings":
+    def _default_workspaces(self) -> "Settings":
         if self.video_workspace_dir is None:
             self.video_workspace_dir = self.data_dir / "video"
+        if self.animate_workspace_dir is None:
+            self.animate_workspace_dir = self.data_dir / "animate"
         return self
 
 
