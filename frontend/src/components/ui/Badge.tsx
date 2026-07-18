@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-type Tone = "neutral" | "primary" | "accent" | "success" | "danger";
+type Tone = "neutral" | "primary" | "accent" | "success" | "danger" | "warning";
 
 const tones: Record<Tone, string> = {
   neutral: "bg-muted text-muted-foreground",
@@ -9,6 +9,7 @@ const tones: Record<Tone, string> = {
   accent: "bg-accent/12 text-accent",
   success: "bg-success/15 text-success",
   danger: "bg-destructive/15 text-destructive",
+  warning: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
 };
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {

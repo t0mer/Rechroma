@@ -31,6 +31,7 @@ function toApiOptions(o: Options): JobOptions {
     renderFactor: o.autoRenderFactor ? undefined : o.renderFactor,
     upscale: o.upscale === "off" ? undefined : (Number(o.upscale) as 2 | 4),
     restoreFaces: o.restoreFaces,
+    engine: o.preset === "animate" ? o.engine : undefined,
   };
 }
 

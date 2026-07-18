@@ -1,10 +1,17 @@
-import type { ReactNode } from "react";
-import { Sparkles } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { AlertTriangle, Cpu, ShieldAlert, Sparkles, Zap } from "lucide-react";
 import { Segmented, Select } from "@/components/ui/Select";
 import { Slider } from "@/components/ui/Slider";
 import { Switch } from "@/components/ui/Switch";
 import { Badge } from "@/components/ui/Badge";
-import type { ColorizerModel, Preset } from "@/lib/api";
+import { cn } from "@/lib/utils";
+import {
+  listEngines,
+  type AnimateEngine,
+  type ColorizerModel,
+  type EngineInfo,
+  type Preset,
+} from "@/lib/api";
 
 export interface Options {
   preset: Preset;
@@ -13,6 +20,7 @@ export interface Options {
   renderFactor: number;
   upscale: "off" | "2" | "4";
   restoreFaces: boolean;
+  engine: AnimateEngine;
 }
 
 export const DEFAULT_OPTIONS: Options = {
@@ -22,6 +30,7 @@ export const DEFAULT_OPTIONS: Options = {
   renderFactor: 30,
   upscale: "2",
   restoreFaces: true,
+  engine: "tpsmm",
 };
 
 interface OptionsPanelProps {
@@ -56,6 +65,91 @@ function Field({
   );
 }
 
+function EngineIcon({ engine }: { engine: AnimateEngine }) {
+  if (engine === "diffusion") return <Zap className="h-4 w-4 text-accent" />;
+  if (engine === "cloud") return <ShieldAlert className="h-4 w-4 text-accent" />;
+  return <Cpu className="h-4 w-4 text-accent" />;
+}
+
+function EngineSelector({
+  value,
+  onChange,
+}: {
+  value: AnimateEngine;
+  onChange: (engine: AnimateEngine) => void;
+}) {
+  const [engines, setEngines] = useState<EngineInfo[] | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    listEngines()
+      .then((e) => alive && setEngines(e))
+      .catch(() => alive && setError(true));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  if (error) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        Couldn’t load engines; the default will be used.
+      </p>
+    );
+  }
+  if (!engines) {
+    return (
+      <p className="text-xs text-muted-foreground">Loading engines…</p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {engines.map((e) => {
+        const selected = value === e.name;
+        const disabled = !e.available;
+        return (
+          <button
+            key={e.name}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(e.name)}
+            className={cn(
+              "flex w-full items-start gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-colors",
+              selected && !disabled
+                ? "border-primary bg-primary/5"
+                : "border-border hover:bg-muted/40",
+              disabled && "cursor-not-allowed opacity-60 hover:bg-transparent",
+            )}
+          >
+            <span className="mt-0.5">
+              <EngineIcon engine={e.name} />
+            </span>
+            <span className="min-w-0 flex-1 leading-tight">
+              <span className="flex flex-wrap items-center gap-1.5">
+                <span className="text-sm font-medium">{e.label}</span>
+                {e.requires_gpu && <Badge tone="neutral">GPU</Badge>}
+                {e.requires_key && <Badge tone="neutral">Key</Badge>}
+                {e.name === "cloud" && <Badge tone="warning">Sends photo out</Badge>}
+              </span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                {e.notes}
+              </span>
+              {disabled && e.reason && (
+                <span className="mt-1 flex items-center gap-1 text-xs text-destructive">
+                  <AlertTriangle className="h-3 w-3 shrink-0" />
+                  {e.reason}
+                </span>
+              )}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function OptionsPanel({ options, onChange }: OptionsPanelProps) {
   const colorizeEnabled = options.preset !== "restore";
 
@@ -85,7 +179,17 @@ export function OptionsPanel({ options, onChange }: OptionsPanelProps) {
         </p>
       </Field>
 
-      {options.preset === "animate" ? null : (
+      {options.preset === "animate" ? (
+        <>
+          <div className="h-px bg-border" />
+          <Field label="Engine">
+            <EngineSelector
+              value={options.engine}
+              onChange={(engine) => onChange({ engine })}
+            />
+          </Field>
+        </>
+      ) : (
       <>
       <div className="h-px bg-border" />
 
