@@ -5,6 +5,12 @@ life. Motion is transferred (relative mode) from a bundled driving clip onto the
 uploaded face. Reuses the vendored facexlib RetinaFace detector for the face
 crop, the vendored TPSMM for animation, and the ffmpeg media layer for encoding.
 
+The output is the animated head-and-shoulders region itself (upscaled toward the
+source resolution) -- the still is *not* re-composited. Compositing a moving face
+back into a static body produced a visible crop seam and a "sliding mask" look;
+outputting the animated crop directly is both cleaner and closer to the
+living-portrait demos this feature targets.
+
 Attribution: TPSMM (Zhao & Zhang, CVPR 2022), MIT code; VoxCeleb weights are
 CC BY-SA 4.0. Runs on CPU (slow) or GPU.
 """
@@ -39,6 +45,9 @@ from .model_registry import get_entry
 _RETINA_MEAN = np.array([104.0, 117.0, 123.0], dtype=np.float32)  # BGR
 _VARIANCES = [0.1, 0.2]
 _TPS = 256  # TPSMM operates on 256x256 crops
+_MAX_OUT = 720  # cap on the upscaled output side (px) to keep files reasonable
+_CROP_MARGIN = 0.6  # head-and-shoulders framing around the detected face box
+_OUT_KEEP = 0.9  # keep this centre fraction of each animated frame (trims warp rim)
 
 
 @dataclass
@@ -113,8 +122,13 @@ class FaceAnimator:
         return ensure_weights(get_entry(name), self.models_dir, self.base_url)
 
     # --- face crop ---------------------------------------------------------
-    def _detect_crop(self, bgr: np.ndarray) -> tuple[tuple[int, int, int, int], np.ndarray]:
-        """Return the largest face box (x1,y1,x2,y2) and a 256x256 RGB crop."""
+    def _detect_crop(self, bgr: np.ndarray) -> tuple[np.ndarray, int]:
+        """Return a 256x256 RGB face crop and the px side to upscale output to.
+
+        The crop is a face-centred square padded (edge-replicated, never black)
+        when it runs past the image bounds -- so TPSMM never sees black borders
+        to warp into artifacts.
+        """
         det = self._detector()
         h, w = bgr.shape[:2]
         img = bgr.astype(np.float32) - _RETINA_MEAN
@@ -140,11 +154,7 @@ class FaceAnimator:
         # largest face
         areas = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
         box = boxes[int(np.argmax(areas))]
-        sq = _square_box(box, w, h, margin=0.35)
-        x1, y1, x2, y2 = sq
-        crop = bgr[y1:y2, x1:x2]
-        crop = cv2.resize(crop, (_TPS, _TPS), interpolation=cv2.INTER_AREA)
-        return sq, cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+        return _square_crop_padded(bgr, box, margin=_CROP_MARGIN, max_side=_MAX_OUT)
 
     # --- animation ---------------------------------------------------------
     def animate(
@@ -164,7 +174,7 @@ class FaceAnimator:
         rgb = np.asarray(image.convert("RGB"))
         bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
         report(0.02)
-        box, crop = self._detect_crop(bgr)
+        crop, out_side = self._detect_crop(bgr)
 
         Path(workspace).mkdir(parents=True, exist_ok=True)
         driver_dir = Path(workspace) / "driver"
@@ -195,8 +205,10 @@ class FaceAnimator:
             }
             bg_param = model.predict_bg_param(source_t, drv)
             out_t = model.animate(source_t, kp_source, kp_rel, bg_param)
-            out_crop = _from_tensor(out_t)
-            frame = _paste_back(rgb, out_crop, box)
+            frame = _from_tensor(out_t)  # 256x256 RGB
+            frame = _center_keep(frame, _OUT_KEEP)  # drop the warped peripheral rim
+            if frame.shape[0] != out_side:
+                frame = cv2.resize(frame, (out_side, out_side), interpolation=cv2.INTER_LANCZOS4)
             Image.fromarray(frame, "RGB").save(frames_dir / f"frame_{i + 1:08d}.png")
             report(0.05 + 0.85 * (i + 1) / n)
 
@@ -205,15 +217,37 @@ class FaceAnimator:
 
 
 # --- helpers ---------------------------------------------------------------
-def _square_box(box: np.ndarray, w: int, h: int, margin: float) -> tuple[int, int, int, int]:
+def _square_crop_padded(
+    bgr: np.ndarray, box: np.ndarray, margin: float, max_side: int
+) -> tuple[np.ndarray, int]:
+    """Face-centred square crop, edge-padded past image bounds; 256 RGB + out side.
+
+    Padding replicates the border rather than filling black, so TPSMM never warps
+    a black margin into the animated frames. ``out_side`` is the square pixel size
+    to upscale the animated 256 output back to (capped at ``max_side``).
+    """
+    h, w = bgr.shape[:2]
     x1, y1, x2, y2 = box
-    cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
-    half = max(x2 - x1, y2 - y1) * (1 + margin) / 2
-    nx1 = int(max(0, cx - half))
-    ny1 = int(max(0, cy - half))
-    nx2 = int(min(w, cx + half))
-    ny2 = int(min(h, cy + half))
-    return nx1, ny1, nx2, ny2
+    cx, cy = (x1 + x2) / 2.0, (y1 + y2) / 2.0
+    half = max(x2 - x1, y2 - y1) * (1.0 + margin) / 2.0
+    side = max(1, int(round(half * 2)))
+    left, top = int(round(cx - half)), int(round(cy - half))
+    pad_l, pad_t = max(0, -left), max(0, -top)
+    pad_r, pad_b = max(0, left + side - w), max(0, top + side - h)
+    if pad_l or pad_t or pad_r or pad_b:
+        bgr = cv2.copyMakeBorder(bgr, pad_t, pad_b, pad_l, pad_r, cv2.BORDER_REPLICATE)
+    x0, y0 = left + pad_l, top + pad_t
+    crop = bgr[y0 : y0 + side, x0 : x0 + side]
+    crop256 = cv2.resize(crop, (_TPS, _TPS), interpolation=cv2.INTER_AREA)
+    out_side = max(_TPS, min(side, max_side))
+    return cv2.cvtColor(crop256, cv2.COLOR_BGR2RGB), out_side
+
+
+def _center_keep(img: np.ndarray, frac: float) -> np.ndarray:
+    """Keep the centre ``frac`` of a square frame; TPSMM warp piles up at the rim."""
+    h, w = img.shape[:2]
+    m = int(round(min(h, w) * (1.0 - frac) / 2.0))
+    return img[m : h - m, m : w - m] if m > 0 else img
 
 
 def _to_tensor(rgb256: np.ndarray, device: torch.device) -> torch.Tensor:
@@ -232,29 +266,6 @@ def _read256(path: Path) -> np.ndarray:
     if rgb.shape[:2] != (_TPS, _TPS):
         rgb = cv2.resize(rgb, (_TPS, _TPS), interpolation=cv2.INTER_AREA)
     return rgb
-
-
-def _paste_back(
-    still_rgb: np.ndarray, out_crop: np.ndarray, box: tuple[int, int, int, int]
-) -> np.ndarray:
-    """Blend the animated crop back into the still using a soft elliptical mask.
-
-    An oval (not a rectangle) centred on the face hides the crop's square seam and
-    excludes the corners, where TPSMM may warp the background into artifacts.
-    """
-    x1, y1, x2, y2 = box
-    bw, bh = x2 - x1, y2 - y1
-    resized = cv2.resize(out_crop, (bw, bh), interpolation=cv2.INTER_LINEAR).astype(np.float32)
-    mask = np.zeros((bh, bw), np.float32)
-    cv2.ellipse(
-        mask, (bw // 2, bh // 2), (int(bw * 0.42), int(bh * 0.47)), 0, 0, 360, 1.0, thickness=-1
-    )
-    feather = max(5, int(min(bw, bh) * 0.12))
-    blurred = cv2.GaussianBlur(mask, (0, 0), sigmaX=feather)[..., None]
-    frame = still_rgb.astype(np.float32).copy()
-    region = frame[y1:y2, x1:x2]
-    frame[y1:y2, x1:x2] = resized * blurred + region * (1 - blurred)
-    return np.clip(frame, 0, 255).astype(np.uint8)
 
 
 class AnimateStep:

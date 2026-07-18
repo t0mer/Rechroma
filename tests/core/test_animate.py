@@ -55,23 +55,24 @@ def _animator(tmp_path, monkeypatch) -> FaceAnimator:
     _driver(drv)
     a = FaceAnimator(device="cpu", driver_path=drv, tpsmm=_FakeTPSMM())
 
-    # crop the whole image as the "face" so no detector/weights are needed
+    # stub the detector/crop so no weights are needed: a 256 crop upscaled to 512
     def _crop(bgr):
         crop = np.zeros((256, 256, 3), np.uint8)
-        return (0, 0, bgr.shape[1], bgr.shape[0]), crop
+        return crop, 512
 
     monkeypatch.setattr(a, "_detect_crop", _crop)
     return a
 
 
-def test_animate_writes_video_at_source_size(tmp_path, monkeypatch):
+def test_animate_writes_square_crop_video(tmp_path, monkeypatch):
     a = _animator(tmp_path, monkeypatch)
     out = tmp_path / "out.mp4"
     seen: list[float] = []
     a.animate(_portrait(), out, tmp_path / "ws", on_progress=seen.append)
     info = probe(out)
     assert out.exists()
-    assert (info.width, info.height) == (320, 240)
+    # output is the animated crop upscaled to out_side, not the source frame
+    assert (info.width, info.height) == (512, 512)
     assert seen and abs(seen[-1] - 1.0) < 1e-6
 
 
