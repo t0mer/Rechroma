@@ -140,7 +140,7 @@ class FaceAnimator:
         # largest face
         areas = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
         box = boxes[int(np.argmax(areas))]
-        sq = _square_box(box, w, h, margin=0.6)
+        sq = _square_box(box, w, h, margin=0.35)
         x1, y1, x2, y2 = sq
         crop = bgr[y1:y2, x1:x2]
         crop = cv2.resize(crop, (_TPS, _TPS), interpolation=cv2.INTER_AREA)
@@ -237,16 +237,23 @@ def _read256(path: Path) -> np.ndarray:
 def _paste_back(
     still_rgb: np.ndarray, out_crop: np.ndarray, box: tuple[int, int, int, int]
 ) -> np.ndarray:
-    """Blend the animated 256 crop back into the still at ``box`` with a soft edge."""
+    """Blend the animated crop back into the still using a soft elliptical mask.
+
+    An oval (not a rectangle) centred on the face hides the crop's square seam and
+    excludes the corners, where TPSMM may warp the background into artifacts.
+    """
     x1, y1, x2, y2 = box
     bw, bh = x2 - x1, y2 - y1
     resized = cv2.resize(out_crop, (bw, bh), interpolation=cv2.INTER_LINEAR).astype(np.float32)
-    feather = max(2, int(min(bw, bh) * 0.08))
-    eroded = cv2.erode(np.ones((bh, bw), np.float32), np.ones((feather, feather), np.uint8))
-    mask = cv2.GaussianBlur(eroded, (0, 0), sigmaX=feather)[..., None]
+    mask = np.zeros((bh, bw), np.float32)
+    cv2.ellipse(
+        mask, (bw // 2, bh // 2), (int(bw * 0.42), int(bh * 0.47)), 0, 0, 360, 1.0, thickness=-1
+    )
+    feather = max(5, int(min(bw, bh) * 0.12))
+    blurred = cv2.GaussianBlur(mask, (0, 0), sigmaX=feather)[..., None]
     frame = still_rgb.astype(np.float32).copy()
     region = frame[y1:y2, x1:x2]
-    frame[y1:y2, x1:x2] = resized * mask + region * (1 - mask)
+    frame[y1:y2, x1:x2] = resized * blurred + region * (1 - blurred)
     return np.clip(frame, 0, 255).astype(np.uint8)
 
 
