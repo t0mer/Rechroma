@@ -51,14 +51,37 @@ and live progress:
 
 ### Animate (living portrait)
 A standalone **Animate** mode brings a still portrait to life — a short animated
-clip where the face moves. Pick **Animate** (it's off by default), upload a clear
+clip. Pick **Animate** (it's off by default), choose an **engine**, upload a clear
 front-facing photo, and get an mp4 back:
 
 ![Animate — progress](assets/screenshots/animate-progress.png)
 ![Animate — result](assets/screenshots/animate-result.png)
 
-> Powered by the Thin-Plate-Spline Motion Model. **CPU is slow** (seconds per
-> frame) — a GPU is strongly recommended. See the licensing note below.
+**Three selectable engines** (per job) — the UI only offers the ones your install
+can actually run:
+
+| Engine | What it does | Runs on | License / cost |
+|---|---|---|---|
+| `tpsmm` (default) | Reenacts a single detected face (motion transfer) | CPU or GPU | CC BY-SA 4.0 weights |
+| `diffusion` | Whole-scene generative motion (Wan2.1-I2V) | **GPU only** + `diffusion` extra | Apache-2.0 |
+| `cloud` | Hosted image-to-video via Replicate | Anywhere (calls out) | pay-per-use; **sends the photo to a third party** |
+
+> **Reality check:** `tpsmm` is lightweight but only animates one face — it is *not*
+> full-scene generative video. For "the whole photo comes alive" you need the
+> `diffusion` engine (a CUDA GPU, multi-GB model, minutes per clip) or the `cloud`
+> engine. **CPU is slow** for `tpsmm` and cannot run `diffusion` at all.
+
+Enable the optional engines in config:
+
+```yaml
+# Local diffusion (GPU only)
+animate_diffusion_enabled: true
+# Cloud (Replicate) — token via env only
+animate_cloud_enabled: true
+```
+```bash
+export REPLICATE_API_TOKEN=r8_...   # required for the cloud engine
+```
 
 ## Features
 
@@ -205,7 +228,13 @@ env var of the form `RECHROMA_<KEY>` (plus `TELEGRAM_BOT_TOKEN`). See
 | `RECHROMA_ALLOWED_CHAT_IDS` | `[]` | Bot allowlist (empty = admins only) |
 | `RECHROMA_ADMIN_CHAT_IDS` | `[]` | Always-allowed chats |
 | `RECHROMA_ANIMATE_ENABLED` | `true` | Enable the Animate feature |
-| `RECHROMA_ANIMATE_MAX_FRAMES` | `120` | Cap on animated output frames |
+| `RECHROMA_ANIMATE_ENGINE` | `tpsmm` | Default engine: `tpsmm` \| `diffusion` \| `cloud` |
+| `RECHROMA_ANIMATE_MAX_FRAMES` | `120` | Cap on animated output frames (tpsmm) |
+| `RECHROMA_ANIMATE_DIFFUSION_ENABLED` | `false` | Enable the local diffusion engine (GPU only) |
+| `RECHROMA_ANIMATE_DIFFUSION_MODEL` | `Wan-AI/Wan2.1-I2V-1.3B-Diffusers` | diffusers image-to-video repo id |
+| `RECHROMA_ANIMATE_CLOUD_ENABLED` | `false` | Enable the cloud (Replicate) engine |
+| `RECHROMA_ANIMATE_CLOUD_MODEL` | `wan-video/wan-2.1-i2v-480p` | Replicate model slug |
+| `REPLICATE_API_TOKEN` | – | Replicate token (required for the cloud engine) |
 
 ## Model credits & licenses
 
@@ -222,7 +251,8 @@ checksums (see `app/core/model_registry.py`, the single source of truth). Use
 | `parsing_parsenet.pth` | Face parsing (facexlib ParseNet) | MIT |
 | `RealESRGAN_x4plus.pth` / `x2plus.pth` | 4× / 2× upscale | BSD-3-Clause |
 | `realesr-general-x4v3.pth` | Lightweight upscale (CPU default) | BSD-3-Clause |
-| `vox.pth.tar` (TPSMM) | Face animation (living portrait) | **CC BY-SA 4.0** |
+| `vox.pth.tar` (TPSMM) | Face animation — `tpsmm` engine | **CC BY-SA 4.0** |
+| Wan2.1-I2V (diffusers) | Generative animation — `diffusion` engine (downloaded by diffusers) | Apache-2.0 |
 
 Architectures are vendored (inference-only) under `app/core/archs/` with upstream
 attribution — [DeOldify](https://github.com/jantic/DeOldify) (MIT),
