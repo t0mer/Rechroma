@@ -40,6 +40,7 @@ from .archs.retinaface import (
 from .archs.tpsmm import TPSMM, load_tpsmm
 from .device import resolve_device
 from .download import ensure_weights
+from .engines.base import AnimateCancelled  # canonical; re-exported for compatibility
 from .model_registry import get_entry
 
 _RETINA_MEAN = np.array([104.0, 117.0, 123.0], dtype=np.float32)  # BGR
@@ -61,8 +62,7 @@ class NoFaceError(Exception):
     """Raised when no face is detected in the source image."""
 
 
-class AnimateCancelled(Exception):
-    """Raised mid-run when ``should_cancel()`` signals the job was cancelled."""
+__all__ = ["AnimateCancelled", "FaceAnimator", "NoFaceError"]
 
 
 class _TPSMMProto(Protocol):  # minimal structural type for the injected/real model
