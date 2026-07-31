@@ -25,37 +25,37 @@ _Can't see the player? [Download the demo](assets/demo/rechroma-demo.mp4)._
 ## Screenshots
 
 ### Web UI
-![Dashboard](assets/screenshots/dashboard-light.png)
+![Dashboard](https://raw.githubusercontent.com/t0mer/Rechroma/main/assets/screenshots/dashboard-light.png)
 
 ### Dark mode
-![Dashboard — dark](assets/screenshots/dashboard-dark.png)
+![Dashboard — dark](https://raw.githubusercontent.com/t0mer/Rechroma/main/assets/screenshots/dashboard-dark.png)
 
 ### Before / after
 Every result gets a draggable before/after slider (drag the divider to reveal the
 restored image) and a full-quality download:
 
-![Before / after slider](assets/screenshots/result-before-after.png)
+![Before / after slider](https://raw.githubusercontent.com/t0mer/Rechroma/main/assets/screenshots/result-before-after.png)
 
 ### Video colorization (v2)
 Submit a short video and get it back colorized, with its original audio intact and
 a live progress bar while it runs:
 
-![Video colorizing — progress](assets/screenshots/video-progress.png)
-![Video result — player](assets/screenshots/video-result.png)
+![Video colorizing — progress](https://raw.githubusercontent.com/t0mer/Rechroma/main/assets/screenshots/video-progress.png)
+![Video result — player](https://raw.githubusercontent.com/t0mer/Rechroma/main/assets/screenshots/video-result.png)
 
 ### Background activity indicator
 A header pill shows tasks still running in the background, with per-task status
 and live progress:
 
-![Activity indicator](assets/screenshots/activity-indicator.png)
+![Activity indicator](https://raw.githubusercontent.com/t0mer/Rechroma/main/assets/screenshots/activity-indicator.png)
 
 ### Animate (living portrait)
 A standalone **Animate** mode brings a still portrait to life — a short animated
 clip. Pick **Animate** (it's off by default), choose an **engine**, upload a clear
 front-facing photo, and get an mp4 back:
 
-![Animate — progress](assets/screenshots/animate-progress.png)
-![Animate — result](assets/screenshots/animate-result.png)
+![Animate — progress](https://raw.githubusercontent.com/t0mer/Rechroma/main/assets/screenshots/animate-progress.png)
+![Animate — result](https://raw.githubusercontent.com/t0mer/Rechroma/main/assets/screenshots/animate-result.png)
 
 **Three selectable engines** (per job) — the UI only offers the ones your install
 can actually run:
